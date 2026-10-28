@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] `npm run dev` shows a deck with walls and the robot, and the robot can be steered with the arrow keys and WASD
-- [ ] `npm test` runs Vitest tests against the game logic interface only
-- [ ] The game logic has no access to DOM, canvas, audio, timers or storage
-- [ ] Tests: the robot keeps moving until a wall; a buffered turn is taken at the next junction; a newer direction input replaces the buffered turn; reversing works immediately; the robot stops at a wall and keeps the buffered turn
-- [ ] Uses the vocabulary from GLOSSARY.md (deck, robot, tile, junction, buffered turn)
+- [x] `npm run dev` shows a deck with walls and the robot, and the robot can be steered with the arrow keys and WASD
+- [x] `npm test` runs Vitest tests against the game logic interface only
+- [x] The game logic has no access to DOM, canvas, audio, timers or storage
+- [x] Tests: the robot keeps moving until a wall; a buffered turn is taken at the next junction; a newer direction input replaces the buffered turn; reversing works immediately; the robot stops at a wall and keeps the buffered turn
+- [x] Uses the vocabulary from GLOSSARY.md (deck, robot, tile, junction, buffered turn)
