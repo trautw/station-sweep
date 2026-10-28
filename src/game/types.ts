@@ -10,13 +10,26 @@ export interface TilePos {
   readonly y: number;
 }
 
+/** A rectangle of tiles, corners inclusive. It may contain walls, but needs at least one corridor tile. */
+export interface GuardedArea {
+  readonly from: TilePos;
+  readonly to: TilePos;
+}
+
+/** A Sentinel: starts on `start` (a corridor tile inside `area`) and guards `area`. */
+export interface SentinelDefinition {
+  readonly start: TilePos;
+  readonly area: GuardedArea;
+}
+
 /**
- * The drones of one deck. Tickets 07/08 add `patrollers` (route waypoints)
- * and `sentinels` (guarded area) here.
+ * The drones of one deck. Ticket 07 adds `patrollers` (route waypoints) here.
  */
 export interface DeckDrones {
   /** Number of Hunters; they wait in the drone bay `B` and are released one after another. */
   readonly hunters?: number;
+  /** Sentinels, each bound to its guarded area. */
+  readonly sentinels?: readonly SentinelDefinition[];
 }
 
 /** A deck as authored: a text grid (one string per row) plus typed drone definitions. */
@@ -45,6 +58,11 @@ export interface LevelRow {
   readonly shutdownTime?: number;
   /** Seconds until a salvaged drone is rebuilt in the drone bay (default 5). */
   readonly rebuildDelay?: number;
+  /**
+   * A Sentinel chases the robot once the robot is at most this many tiles
+   * away (distance between tile centres; default 4).
+   */
+  readonly sentinelTriggerDistance?: number;
 }
 
 /** Lives at the start of a game. */
@@ -76,18 +94,27 @@ export type GameEvent =
 
 export type Phase = 'playing' | 'deckCleared' | 'gameOver';
 
-/** Tickets 07/08 add 'patroller' | 'sentinel'. */
-export type DroneType = 'hunter';
+/** Ticket 07 adds 'patroller'. */
+export type DroneType = 'hunter' | 'sentinel';
 
 /**
  * What a drone is doing. 'waiting': in the drone bay, not active (cannot catch).
  * 'hunting': heading for the robot by the shortest path.
- * 'shutdown' (any type): hit by an EMP, stands still, cannot catch, can be salvaged;
- * afterwards it resumes the mode it had. 'salvaged' (any type): waiting in the
- * drone bay to be rebuilt, not active.
- * Later tickets add patrolling/chasing/guarding/returning.
+ * Later tickets add patrolling.
  */
-export type DroneMode = 'waiting' | 'hunting' | 'shutdown' | 'salvaged';
+export type DroneMode =
+  | 'waiting'
+  | 'hunting'
+  /** Sentinel moving around inside its guarded area. */
+  | 'guarding'
+  /** Sentinel (or Patroller) heading for the robot by the shortest path. */
+  | 'chasing'
+  /** Sentinel heading back to its guarded area after the robot got out of range. */
+  | 'returning'
+  /** Any type: hit by an EMP, stands still, cannot catch, can be salvaged; then resumes its mode. */
+  | 'shutdown'
+  /** Any type: salvaged, waiting in the drone bay to be rebuilt; not active. */
+  | 'salvaged';
 
 export interface DroneState {
   readonly type: DroneType;

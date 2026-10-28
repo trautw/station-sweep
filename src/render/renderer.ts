@@ -8,6 +8,8 @@ const COLORS = {
   robotEye: '#05070f',
   hunter: '#ff3b5c',
   hunterEye: '#ffe6ea',
+  sentinel: '#ffa630',
+  sentinelCore: '#2a1500',
   overlay: 'rgba(5, 7, 15, 0.7)',
   text: '#ff3b5c',
   energyCell: '#5dffc8',
@@ -177,11 +179,18 @@ export class Renderer {
     ) {
       return;
     }
+    // Every shut-down drone is drawn without colour.
+    this.ctx.save();
+    if (drone.mode === 'shutdown') this.ctx.filter = 'grayscale(1) brightness(0.7)';
     switch (drone.type) {
       case 'hunter':
         this.drawHunter(drone, robot);
         break;
+      case 'sentinel':
+        this.drawSentinel(drone, robot);
+        break;
     }
+    this.ctx.restore();
   }
 
   /**
@@ -214,6 +223,45 @@ export class Renderer {
     ctx.fillStyle = COLORS.hunterEye;
     ctx.beginPath();
     ctx.arc(Math.cos(look) * r * 0.2, Math.sin(look) * r * 0.2, r * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /**
+   * Sentinel: orange hexagon shield with a dark core and a lens. While guarding
+   * the lens sweeps around; while chasing it locks on to the robot and the
+   * glow widens; while returning it is slightly dimmed.
+   */
+  private drawSentinel(drone: DroneState, robot: { x: number; y: number }): void {
+    const { ctx, tileSize: t } = this;
+    const cx = (drone.position.x + 0.5) * t;
+    const cy = (drone.position.y + 0.5) * t;
+    const r = t * 0.44;
+    const chasing = drone.mode === 'chasing';
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.globalAlpha = drone.mode === 'returning' ? 0.75 : 1;
+    ctx.shadowColor = COLORS.sentinel;
+    ctx.shadowBlur = chasing ? t : t / 3;
+    ctx.fillStyle = COLORS.sentinel;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI / 6 + (i * Math.PI) / 3;
+      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = COLORS.sentinelCore;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+    const look = chasing
+      ? Math.atan2(robot.y - drone.position.y, robot.x - drone.position.x)
+      : (drone.position.x + drone.position.y) * 1.5;
+    ctx.fillStyle = COLORS.sentinel;
+    ctx.beginPath();
+    ctx.arc(Math.cos(look) * r * 0.25, Math.sin(look) * r * 0.25, r * 0.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }

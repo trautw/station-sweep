@@ -193,3 +193,39 @@ describe('salvaging', () => {
     expect(game.state().drones[0]!.position.x).toBeLessThan(bay.x);
   });
 });
+
+describe('EMP on Sentinels', () => {
+  // The Sentinel guards x 4..6; the robot picks up the charge and waits at x=1.
+  const grid = ['#RE           B#'];
+  const drones: DeckDrones = {
+    sentinels: [{ start: { x: 5, y: 0 }, area: { from: { x: 4, y: 0 }, to: { x: 6, y: 0 } } }],
+  };
+  const levels: LevelRow[] = [{ ...LEVELS[0]!, sentinelTriggerDistance: 1 }];
+
+  function shutDownSentinel(): Game {
+    const game = startGame(grid, drones, levels);
+    drive(game, 'right', 1);
+    drive(game, 'left', 1);
+    game.send({ type: 'triggerEmp' });
+    game.tick(1);
+    expect(game.state().drones[0]!.mode).toBe('shutdown');
+    return game;
+  }
+
+  it('shuts it down; it wakes up guarding again', () => {
+    const game = shutDownSentinel();
+    game.tick(SHUTDOWN_TICKS - 1);
+    expect(game.state().drones[0]!.mode).toBe('guarding');
+  });
+
+  it('lets the robot salvage it for 250 points', () => {
+    const game = shutDownSentinel();
+    game.send({ type: 'direction', direction: 'right' });
+    while (game.state().drones[0]!.mode === 'shutdown') game.tick(1);
+    expect(game.events()).toContainEqual(
+      expect.objectContaining({ type: 'droneSalvaged', points: 250 }),
+    );
+    expect(game.state().drones[0]).toMatchObject({ mode: 'salvaged', tile: { x: 14, y: 0 } });
+    expect(game.state().lives).toBe(3);
+  });
+});

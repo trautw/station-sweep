@@ -40,6 +40,7 @@ const DEFAULT_DRONE_SPEED = 5;
 const DEFAULT_HUNTER_RELEASE_DELAY = 3;
 const DEFAULT_SHUTDOWN_TIME = 5;
 const DEFAULT_REBUILD_DELAY = 5;
+const DEFAULT_SENTINEL_TRIGGER_DISTANCE = 4;
 
 /** Caught when robot and an active drone are closer than this (overlap of more than half a tile). */
 const CATCH_DISTANCE = 0.5 - 1e-6;
@@ -168,6 +169,7 @@ class Simulation implements Game {
       elapsedTicks: this.elapsedTicks,
       hunterReleaseDelayTicks:
         (row.hunterReleaseDelay ?? DEFAULT_HUNTER_RELEASE_DELAY) * TICKS_PER_SECOND,
+      sentinelTriggerDistance: row.sentinelTriggerDistance ?? DEFAULT_SENTINEL_TRIGGER_DISTANCE,
       distance: droneSpeed / TICKS_PER_SECOND,
     };
     for (const drone of this.drones) updateDrone(drone, ctx);
