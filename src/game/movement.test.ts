@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, type Game } from './index';
+import { levelRow } from './test-levels';
 
 // Robot speed 6 tiles/s at 60 ticks/s => exactly 10 ticks per tile.
 const TICKS_PER_TILE = 10;
 
 function startGame(grid: string[]): Game {
-  const result = createGame([{ name: 'test deck', grid }], [{ robotSpeed: 6 }]);
+  const result = createGame([{ name: 'test deck', grid }], [levelRow()]);
   if (!result.ok) throw new Error(result.errors.join('\n'));
   result.game.send({ type: 'start' });
   return result.game;
@@ -129,7 +130,7 @@ describe('robot movement', () => {
 
 describe('creating a game', () => {
   it('reports an error instead of a game when the deck has no robot start', () => {
-    const result = createGame([{ name: 'empty', grid: ['###', '#B#', '###'] }], [{ robotSpeed: 6 }]);
+    const result = createGame([{ name: 'empty', grid: ['###', '#B#', '###'] }], [levelRow()]);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.join()).toMatch(/robot start/);
   });

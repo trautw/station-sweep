@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, type Game } from './index';
+import { levelRow } from './test-levels';
 
 // Robot speed 6 tiles/s at 60 ticks/s => exactly 10 ticks per tile.
 const TICKS_PER_TILE = 10;
 
 function startGame(grid: string[]): Game {
-  const result = createGame([{ name: 'test deck', grid }], [{ robotSpeed: 6 }]);
+  const result = createGame([{ name: 'test deck', grid }], [levelRow()]);
   if (!result.ok) throw new Error(result.errors.join('\n'));
   result.game.send({ type: 'start' });
   return result.game;
@@ -63,7 +64,7 @@ describe('airlocks', () => {
 
 describe('airlock validation', () => {
   function errorsFor(grid: string[]): readonly string[] {
-    const result = createGame([{ name: 'test deck', grid }], [{ robotSpeed: 6 }]);
+    const result = createGame([{ name: 'test deck', grid }], [levelRow()]);
     return result.ok ? [] : result.errors;
   }
 

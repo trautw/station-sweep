@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from './index';
+import { levelRow } from './test-levels';
 
 function errorsFor(grid: string[]): readonly string[] {
-  const result = createGame([{ name: 'test deck', grid }], [{ robotSpeed: 6 }]);
+  const result = createGame([{ name: 'test deck', grid }], [levelRow()]);
   return result.ok ? [] : result.errors;
 }
 
@@ -73,7 +74,7 @@ describe('deck validation', () => {
           ],
         },
       ],
-      [{ robotSpeed: 6 }],
+      [levelRow()],
     );
     expect(result.ok).toBe(true);
   });
@@ -84,7 +85,7 @@ describe('deck validation', () => {
         { name: 'first', grid: ['#####', '#R .#', '#####'] },
         { name: 'second', grid: ['#####', '# B #', '#####'] },
       ],
-      [{ robotSpeed: 6 }],
+      [levelRow()],
     );
     expect(result.ok).toBe(false);
     if (!result.ok) {

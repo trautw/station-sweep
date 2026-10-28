@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, DECK_CLEARED_TICKS, type Game, type LevelRow } from './index';
+import { levelRow } from './test-levels';
 
 // Robot speed 6 tiles/s at 60 ticks/s => 10 ticks per tile.
 const TICKS_PER_TILE = 10;
-const LEVELS: LevelRow[] = [{ robotSpeed: 6 }];
+const LEVELS: LevelRow[] = [levelRow()];
 
 function newGame(grid: string[] = ['#R....B#']): Game {
   const result = createGame([{ name: 'test deck', grid }], LEVELS);
@@ -112,7 +113,7 @@ describe('Pause phase', () => {
  */
 const DECK_A = { name: 'deck A', grid: ['#RE.. B#'], drones: { hunters: 1 } };
 const DECK_B = { name: 'deck B', grid: ['#R.B#'] };
-const HUNTER_LEVELS: LevelRow[] = [{ robotSpeed: 6, droneSpeed: 5, hunterReleaseDelay: 1 }];
+const HUNTER_LEVELS: LevelRow[] = [levelRow({ droneSpeed: 5, hunterReleaseDelay: 1 })];
 
 function gameOver(): Game {
   const result = createGame([DECK_A, DECK_B], HUNTER_LEVELS);

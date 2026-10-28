@@ -15,7 +15,6 @@ import { createRobot, giveDirection, moveRobot, robotSnapshot, type Robot } from
 import {
   DECK_CLEARED_TICKS,
   DRONE_SPEED_CAP,
-  EMP_RADIUS,
   EXTRA_LIFE_POINTS,
   MAX_CARRIED_EMP_CHARGES,
   START_LIVES,
@@ -39,13 +38,6 @@ const DECK_BONUS = 1000;
 const DECK_BONUS_PER_CHARGE = 500;
 
 const tileKey = (t: TilePos): string => `${t.x},${t.y}`;
-
-/** Fallbacks for optional level table fields. Real values live in src/data/levels.ts. */
-const DEFAULT_DRONE_SPEED = 5;
-const DEFAULT_HUNTER_RELEASE_DELAY = 3;
-const DEFAULT_SHUTDOWN_TIME = 5;
-const DEFAULT_REBUILD_DELAY = 5;
-const DEFAULT_SENTINEL_TRIGGER_DISTANCE = 4;
 
 /** Caught when robot and an active drone are closer than this (overlap of more than half a tile). */
 const CATCH_DISTANCE = 0.5 - 1e-6;
@@ -240,17 +232,13 @@ class Simulation implements Game {
     this.collectEnergyCell(events);
     if (this.phase !== 'playing') return;
 
-    const droneSpeed = Math.min(
-      row.droneSpeed ?? DEFAULT_DRONE_SPEED,
-      row.robotSpeed * DRONE_SPEED_CAP,
-    );
+    const droneSpeed = Math.min(row.droneSpeed, row.robotSpeed * DRONE_SPEED_CAP);
     const ctx = {
       deck: this.deck,
       robotTile: robotSnapshot(this.robot).tile,
       elapsedTicks: this.elapsedTicks,
-      hunterReleaseDelayTicks:
-        (row.hunterReleaseDelay ?? DEFAULT_HUNTER_RELEASE_DELAY) * TICKS_PER_SECOND,
-      sentinelTriggerDistance: row.sentinelTriggerDistance ?? DEFAULT_SENTINEL_TRIGGER_DISTANCE,
+      hunterReleaseDelayTicks: row.hunterReleaseDelay * TICKS_PER_SECOND,
+      sentinelTriggerDistance: row.sentinelTriggerDistance,
       distance: droneSpeed / TICKS_PER_SECOND,
     };
     for (const drone of this.drones) updateDrone(drone, ctx);
@@ -261,17 +249,17 @@ class Simulation implements Game {
     if (this.robotCaught(robotFrom, dronesBefore)) this.catchRobot(events);
   }
 
-  /** Use up one carried charge and shut down every drone within EMP_RADIUS of the robot. */
+  /** Use up one carried charge and shut down every drone within the level's EMP radius of the robot. */
   private triggerEmp(row: LevelRow, events: GameEvent[]): void {
     this.empTriggerPending = false;
     if (this.carriedEmpCharges === 0) return;
     this.carriedEmpCharges--;
     const emp = ++this.empsTriggered;
     const robot = robotSnapshot(this.robot).tile;
-    const ticks = Math.round((row.shutdownTime ?? DEFAULT_SHUTDOWN_TIME) * TICKS_PER_SECOND);
+    const ticks = Math.round(row.shutdownTime * TICKS_PER_SECOND);
     for (const drone of this.drones) {
       const { tile } = droneSnapshot(drone);
-      if (Math.hypot(tile.x - robot.x, tile.y - robot.y) <= EMP_RADIUS + 1e-6) shutDown(drone, ticks, emp);
+      if (Math.hypot(tile.x - robot.x, tile.y - robot.y) <= row.empRadius + 1e-6) shutDown(drone, ticks, emp);
     }
     events.push({ type: 'empTriggered' });
   }
@@ -323,7 +311,7 @@ class Simulation implements Game {
     dronesBefore: readonly TilePos[],
     events: GameEvent[],
   ): void {
-    const ticks = Math.round((row.rebuildDelay ?? DEFAULT_REBUILD_DELAY) * TICKS_PER_SECOND);
+    const ticks = Math.round(row.rebuildDelay * TICKS_PER_SECOND);
     this.drones.forEach((drone, i) => {
       if (!isShutDown(drone) || !this.touches(drone, robotBefore, dronesBefore[i])) return;
       const { tile } = droneSnapshot(drone);

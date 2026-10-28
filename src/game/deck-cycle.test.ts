@@ -6,10 +6,11 @@ import {
   type Game,
   type LevelRow,
 } from './index';
+import { levelRow } from './test-levels';
 
 // Robot speed 6 tiles/s at 60 ticks/s => 10 ticks per tile.
 const TICKS_PER_TILE = 10;
-const LEVELS: LevelRow[] = [{ robotSpeed: 6 }];
+const LEVELS: LevelRow[] = [levelRow()];
 
 /** A deck with one energy cell right of the robot: one tile to the right clears it. */
 function oneCellDeck(name: string, drones: DeckDefinition['drones'] = {}): DeckDefinition {
@@ -129,9 +130,9 @@ function ticksUntilHunterReleased(game: Game, limit = 1000): number {
 describe('level table', () => {
   it('gives each level its own row, and the last row to all higher levels', () => {
     const levels: LevelRow[] = [
-      { robotSpeed: 6, hunterReleaseDelay: 3 },
-      { robotSpeed: 6, hunterReleaseDelay: 2 },
-      { robotSpeed: 6, hunterReleaseDelay: 1 },
+      levelRow({ hunterReleaseDelay: 3 }),
+      levelRow({ hunterReleaseDelay: 2 }),
+      levelRow({ hunterReleaseDelay: 1 }),
     ];
     // One deck per cycle: every cleared deck raises the level.
     const game = startGame([oneCellDeck('only', { hunters: 1 })], levels);
@@ -147,8 +148,8 @@ describe('level table', () => {
 
   it('takes the shutdown time from the current level', () => {
     const levels: LevelRow[] = [
-      { robotSpeed: 6, shutdownTime: 4 },
-      { robotSpeed: 6, shutdownTime: 2 },
+      levelRow({ shutdownTime: 4 }),
+      levelRow({ shutdownTime: 2 }),
     ];
     const deck: DeckDefinition = {
       name: 'charged',
@@ -173,8 +174,8 @@ describe('level table', () => {
 
   it('takes the drone speed from the current level, always below the robot speed', () => {
     const levels: LevelRow[] = [
-      { robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 0 },
-      { robotSpeed: 6, droneSpeed: 9, hunterReleaseDelay: 0 },
+      levelRow({ droneSpeed: 3, hunterReleaseDelay: 0 }),
+      levelRow({ droneSpeed: 9, hunterReleaseDelay: 0 }),
     ];
     const deck: DeckDefinition = {
       name: 'long',

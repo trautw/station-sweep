@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, type DeckDrones, type Game, type LevelRow } from './index';
+import { levelRow } from './test-levels';
 
 // Robot speed 6 tiles/s at 60 ticks/s => 10 ticks per tile.
 // Drone speed 3 tiles/s => 20 ticks per tile. Hunters are released at once.
 // Shutdown 2 s => 120 ticks; rebuild delay 1 s => 60 ticks.
 const LEVELS: LevelRow[] = [
-  { robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 0, shutdownTime: 2, rebuildDelay: 1 },
+  levelRow({ droneSpeed: 3, hunterReleaseDelay: 0, shutdownTime: 2, rebuildDelay: 1 }),
 ];
 const TICKS_PER_TILE = 10;
 const SHUTDOWN_TICKS = 120;
@@ -75,7 +76,7 @@ describe('triggering an EMP', () => {
     const game = startGame(
       ['#RE' + ' '.repeat(18) + 'B#'],
       { hunters: 2 },
-      [{ robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 1, shutdownTime: 2, rebuildDelay: 1 }],
+      [levelRow({ droneSpeed: 3, hunterReleaseDelay: 1, shutdownTime: 2, rebuildDelay: 1 })],
     );
     drive(game, 'right', 1);
     drive(game, 'left', 1);
@@ -88,6 +89,24 @@ describe('triggering an EMP', () => {
     expect(game.events()).toContainEqual({ type: 'empTriggered' });
     expect(game.state().carriedEmpCharges).toBe(0);
     expect(game.state().drones.map((d) => d.mode)).toEqual(['shutdown', 'hunting']);
+  });
+
+  it('takes its radius from the level table', () => {
+    // Same setup as above, but with radius 3 the Hunter 5 tiles away is missed.
+    const game = startGame(
+      ['#RE' + ' '.repeat(18) + 'B#'],
+      { hunters: 2 },
+      [levelRow({ droneSpeed: 3, hunterReleaseDelay: 1, shutdownTime: 2, rebuildDelay: 1, empRadius: 3 })],
+    );
+    drive(game, 'right', 1);
+    drive(game, 'left', 1);
+    game.tick(361 - 2 * TICKS_PER_TILE);
+    expect(game.state().drones.map((d) => d.tile.x)).toEqual([6, 9]);
+
+    game.send({ type: 'triggerEmp' });
+    game.tick(1);
+    expect(game.events()).toContainEqual({ type: 'empTriggered' });
+    expect(game.state().drones.map((d) => d.mode)).toEqual(['hunting', 'hunting']);
   });
 });
 
@@ -153,7 +172,7 @@ describe('salvaging', () => {
   it('starts a new chain with every EMP', () => {
     // Two charges; the Hunters are released 1 s apart and shut down one at a time.
     const game = startGame(['#REE  B#'], { hunters: 2 }, [
-      { robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 1, shutdownTime: 2, rebuildDelay: 5 },
+      levelRow({ droneSpeed: 3, hunterReleaseDelay: 1, shutdownTime: 2, rebuildDelay: 5 }),
     ]);
     drive(game, 'right', 2);
     drive(game, 'left', 2);

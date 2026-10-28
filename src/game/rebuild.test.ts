@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, type DeckDrones, type DroneState, type Game, type LevelRow, type TilePos } from './index';
+import { levelRow } from './test-levels';
 
 // Robot 6 tiles/s => 10 ticks per tile; drones 3 tiles/s => 20 ticks per tile.
 // Shutdown 2 s; rebuild delay 5 s, long enough for the robot to get into position.
 const LEVELS: LevelRow[] = [
-  { robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 0, shutdownTime: 2, rebuildDelay: 5 },
+  levelRow({ droneSpeed: 3, hunterReleaseDelay: 0, shutdownTime: 2, rebuildDelay: 5 }),
 ];
 const TICKS_PER_TILE = 10;
 const REBUILD_TICKS = 300;

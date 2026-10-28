@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, type Game, type LevelRow } from './index';
+import { levelRow } from './test-levels';
 
 // Robot speed 6 tiles/s at 60 ticks/s => 10 ticks per tile.
 // Drone speed 3 tiles/s => 20 ticks per tile. Release delay 1 s => 60 ticks.
-const LEVELS: LevelRow[] = [{ robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 1 }];
+const LEVELS: LevelRow[] = [levelRow({ droneSpeed: 3, hunterReleaseDelay: 1 })];
 const RELEASE_TICKS = 60;
 const DRONE_TICKS_PER_TILE = 20;
 
@@ -80,7 +81,7 @@ describe('Hunters', () => {
     const game = startGame(
       ['#BR                         #'],
       1,
-      [{ robotSpeed: 6, droneSpeed: 10, hunterReleaseDelay: 0.5 }],
+      [levelRow({ droneSpeed: 10, hunterReleaseDelay: 0.5 })],
     );
     game.send({ type: 'direction', direction: 'right' });
     game.tick(30);
@@ -96,7 +97,7 @@ describe('drones', () => {
   it('pass through each other instead of blocking each other', () => {
     // Released together, both Hunters share the same tiles all the way.
     const game = startGame(['#R     B#'], 2, [
-      { robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 0 },
+      levelRow({ droneSpeed: 3, hunterReleaseDelay: 0 }),
     ]);
     game.tick(3 * DRONE_TICKS_PER_TILE);
     const [a, b] = game.state().drones;
@@ -165,7 +166,7 @@ describe('getting caught', () => {
   it('does not happen when the robot jumps through an airlock past a drone', () => {
     // The robot enters airlock 1 at x=1 and comes out at x=10, beyond the Hunter.
     const game = startGame(['#1R   B   1#'], 1, [
-      { robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 0 },
+      levelRow({ droneSpeed: 3, hunterReleaseDelay: 0 }),
     ]);
     game.send({ type: 'direction', direction: 'left' });
     game.tick(12);
@@ -175,7 +176,7 @@ describe('getting caught', () => {
   });
 
   it('never happens with a drone still waiting in the drone bay', () => {
-    const game = startGame(['#R B#'], 1, [{ robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 10 }]);
+    const game = startGame(['#R B#'], 1, [levelRow({ droneSpeed: 3, hunterReleaseDelay: 10 })]);
     game.send({ type: 'direction', direction: 'right' });
     game.tick(60);
     expect(game.state().robot.tile).toEqual({ x: 3, y: 0 });
@@ -185,7 +186,7 @@ describe('getting caught', () => {
   it('happens when the robot and a drone swap positions within one tick', () => {
     // Robot 1 tile per tick, Hunter 0.5 tiles per tick, released in the first tick.
     const game = startGame(['#R    B#'], 1, [
-      { robotSpeed: 60, droneSpeed: 30, hunterReleaseDelay: 0 },
+      levelRow({ robotSpeed: 60, droneSpeed: 30, hunterReleaseDelay: 0 }),
     ]);
     game.send({ type: 'direction', direction: 'right' });
     game.tick(3);

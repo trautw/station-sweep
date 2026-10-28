@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, type Game, type LevelRow, type TilePos } from './index';
+import { levelRow } from './test-levels';
 
 // Robot speed 6 tiles/s at 60 ticks/s => 10 ticks per tile.
 // Drone speed 3 tiles/s => 20 ticks per tile.
-const LEVELS: LevelRow[] = [{ robotSpeed: 6, droneSpeed: 3 }];
+const LEVELS: LevelRow[] = [levelRow({ droneSpeed: 3 })];
 const DRONE_TICKS_PER_TILE = 20;
 
 function startGame(grid: string[], routes: (readonly [TilePos, ...TilePos[]])[]): Game {

@@ -94,7 +94,7 @@ describe('real decks', () => {
 describe('real level table', () => {
   it('keeps drone speed below robot speed on every level', () => {
     for (const row of levelTable) {
-      expect(row.droneSpeed ?? 0).toBeLessThan(row.robotSpeed);
+      expect(row.droneSpeed).toBeLessThan(row.robotSpeed);
     }
   });
 });

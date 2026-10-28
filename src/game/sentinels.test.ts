@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, type DroneState, type Game, type LevelRow, type SentinelDefinition } from './index';
+import { levelRow } from './test-levels';
 
 // Robot speed 6 tiles/s => 10 ticks per tile. Drone speed 3 tiles/s => 20 ticks per tile.
 const levels = (sentinelTriggerDistance: number): LevelRow[] => [
-  { robotSpeed: 6, droneSpeed: 3, sentinelTriggerDistance },
+  levelRow({ droneSpeed: 3, sentinelTriggerDistance }),
 ];
 
 // A long two-row hall. The guarded area is its right end, x 12..16.
@@ -166,7 +167,7 @@ describe('catching around a corner', () => {
       area: { from: { x: 2, y: 1 }, to: { x: 3, y: 3 } },
     };
     const game = startGame(grid, [corner], [
-      { robotSpeed: 48, droneSpeed: 43.2, sentinelTriggerDistance: 0 },
+      levelRow({ robotSpeed: 48, droneSpeed: 43.2, sentinelTriggerDistance: 0 }),
     ]);
     game.send({ type: 'direction', direction: 'right' });
     game.tick(2);

@@ -51,28 +51,29 @@ export interface DeckDefinition {
 
 /**
  * Difficulty values for one level. Row i applies to level i + 1; the last row
- * repeats for all higher levels. Later tickets add drone speed, shutdown time,
- * hunter release delay, rebuild delay and sentinel trigger distance.
+ * repeats for all higher levels.
  */
 export interface LevelRow {
   /** Robot speed in tiles per second. */
   readonly robotSpeed: number;
   /**
-   * Drone speed in tiles per second (default 5). Always capped below the
-   * robot speed (see DRONE_SPEED_CAP).
+   * Drone speed in tiles per second. Always capped below the robot speed
+   * (see DRONE_SPEED_CAP).
    */
-  readonly droneSpeed?: number;
-  /** Seconds between Hunter releases from the drone bay (default 3). */
-  readonly hunterReleaseDelay?: number;
-  /** Seconds a drone hit by an EMP stays shut down (default 5). */
-  readonly shutdownTime?: number;
-  /** Seconds until a salvaged drone is rebuilt in the drone bay (default 5). */
-  readonly rebuildDelay?: number;
+  readonly droneSpeed: number;
+  /** Seconds between Hunter releases from the drone bay. */
+  readonly hunterReleaseDelay: number;
+  /** Seconds a drone hit by an EMP stays shut down. */
+  readonly shutdownTime: number;
+  /** Seconds until a salvaged drone is rebuilt in the drone bay. */
+  readonly rebuildDelay: number;
   /**
    * A Sentinel chases the robot once the robot is at most this many tiles
-   * away (distance between tile centres; default 4).
+   * away (distance between tile centres).
    */
-  readonly sentinelTriggerDistance?: number;
+  readonly sentinelTriggerDistance: number;
+  /** An EMP shuts down every drone whose tile centre is at most this many tiles from the robot's. */
+  readonly empRadius: number;
 }
 
 /** Lives at the start of a game. */
@@ -105,9 +106,6 @@ export type Command =
   | { readonly type: 'resume' }
   /** After game over: a fresh run on the first deck at level 1. Only accepted in 'gameOver'. */
   | { readonly type: 'playAgain' };
-
-/** An EMP shuts down every drone whose tile centre is at most this many tiles from the robot's. */
-export const EMP_RADIUS = 5;
 
 export type GameEvent =
   | { readonly type: 'cellCollected'; readonly tile: TilePos }
