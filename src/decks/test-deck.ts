@@ -9,6 +9,8 @@ export const testDeck: DeckDefinition = {
       { route: [{ x: 1, y: 1 }, { x: 8, y: 1 }, { x: 8, y: 3 }, { x: 1, y: 3 }] },
       { route: [{ x: 2, y: 13 }, { x: 16, y: 13 }] },
     ],
+    // Guards the top-right block of corridors.
+    sentinels: [{ start: { x: 14, y: 3 }, area: { from: { x: 10, y: 1 }, to: { x: 17, y: 5 } } }],
   },
   grid: [
     '###################',

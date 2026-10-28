@@ -10,12 +10,26 @@ export interface TilePos {
   readonly y: number;
 }
 
+/** A rectangle of tiles, corners inclusive. It may contain walls, but needs at least one corridor tile. */
+export interface GuardedArea {
+  readonly from: TilePos;
+  readonly to: TilePos;
+}
+
+/** A Sentinel: starts on `start` (a corridor tile inside `area`) and guards `area`. */
+export interface SentinelDefinition {
+  readonly start: TilePos;
+  readonly area: GuardedArea;
+}
+
 /**
- * The drones of one deck. Ticket 08 adds `sentinels` (guarded area) here.
+ * The drones of one deck.
  */
 export interface DeckDrones {
   /** Number of Hunters; they wait in the drone bay `B` and are released one after another. */
   readonly hunters?: number;
+  /** Sentinels, each bound to its guarded area. */
+  readonly sentinels?: readonly SentinelDefinition[];
   /** Patrollers, each flying its route of waypoints in a loop. */
   readonly patrollers?: readonly PatrollerDefinition[];
 }
@@ -50,6 +64,11 @@ export interface LevelRow {
   readonly droneSpeed?: number;
   /** Seconds between Hunter releases from the drone bay (default 3). */
   readonly hunterReleaseDelay?: number;
+  /**
+   * A Sentinel chases the robot once the robot is at most this many tiles
+   * away (distance between tile centres; default 4).
+   */
+  readonly sentinelTriggerDistance?: number;
 }
 
 /** Lives at the start of a game. */
@@ -68,22 +87,26 @@ export type GameEvent =
 
 export type Phase = 'playing' | 'deckCleared' | 'gameOver';
 
-/** Ticket 08 adds 'sentinel'. */
 export type DroneType =
   | 'hunter'
-  | 'patroller';
+  | 'patroller'
+  | 'sentinel';
 
 /**
  * What a drone is doing. 'waiting': in the drone bay, not active (cannot catch).
  * 'hunting': heading for the robot by the shortest path. Later tickets add
- * patrolling/chasing/guarding/returning and shutdown/salvaged.
+ * patrolling and shutdown/salvaged.
  */
 export type DroneMode =
   | 'waiting'
   | 'hunting'
-  // Patroller: flying its route / chasing while in line of sight / flying back to its route.
+  /** Patroller flying its route of waypoints in a loop. */
   | 'patrolling'
+  /** Sentinel moving around inside its guarded area. */
+  | 'guarding'
+  /** Patroller (robot in line of sight) or Sentinel heading for the robot by the shortest path. */
   | 'chasing'
+  /** Sentinel heading back to its guarded area, or Patroller to the nearest waypoint of its route. */
   | 'returning';
 
 export interface DroneState {

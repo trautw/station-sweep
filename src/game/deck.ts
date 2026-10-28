@@ -1,5 +1,12 @@
 import { step } from './grid';
-import type { AirlockPair, DeckDefinition, Direction, TilePos } from './types';
+import type {
+  AirlockPair,
+  DeckDefinition,
+  Direction,
+  GuardedArea,
+  SentinelDefinition,
+  TilePos,
+} from './types';
 
 const DIRECTIONS: readonly Direction[] = ['up', 'down', 'left', 'right'];
 
@@ -15,6 +22,8 @@ export interface Deck {
   readonly hunters: number;
   /** One route (list of waypoints, at least one) per Patroller. */
   readonly patrolRoutes: readonly (readonly TilePos[])[];
+  /** Sentinels as defined in the deck (validated: start and guarded area are usable). */
+  readonly sentinels: readonly SentinelDefinition[];
   /** Energy cell tiles in row-major order. */
   readonly energyCells: readonly TilePos[];
   /**
@@ -55,6 +64,7 @@ interface RawDeck {
   readonly airlockTiles: ReadonlyMap<number, readonly TilePos[]>;
   /** Waypoints of each Patroller, as authored. */
   readonly patrolRoutes: readonly (readonly TilePos[])[];
+  readonly sentinels: readonly SentinelDefinition[];
 }
 
 /** A validation rule returns one message per problem it finds (empty when fine). */
@@ -66,6 +76,7 @@ const VALIDATION_RULES: readonly ValidationRule[] = [
   (deck) => unpairedAirlocks(deck),
   (deck) => unreachableFromRobot(deck, deck.energyCells, 'energy cell'),
   (deck) => waypointsInWalls(deck),
+  (deck) => invalidSentinels(deck),
 ];
 
 export function parseDeck(def: DeckDefinition): ParseResult {
@@ -121,6 +132,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
     energyCells,
     airlockTiles,
     patrolRoutes: (def.drones?.patrollers ?? []).map((p) => p.route),
+    sentinels: def.drones?.sentinels ?? [],
   };
   for (const rule of VALIDATION_RULES) errors.push(...rule(raw));
 
@@ -141,6 +153,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
       energyCells,
       hunters: def.drones?.hunters ?? 0,
       patrolRoutes: raw.patrolRoutes,
+      sentinels: def.drones?.sentinels ?? [],
       airlocks: airlockPairs(airlockTiles),
     },
   };
@@ -187,6 +200,35 @@ function waypointsInWalls(deck: RawDeck): string[] {
       .filter((wp) => isWall(deck, wp))
       .map((wp) => `Patroller ${i + 1} waypoint at ${fmt(wp)} lies in a wall`),
   );
+}
+
+/** Each Sentinel needs a guarded area with a corridor tile and a corridor start inside that area. */
+function invalidSentinels(deck: RawDeck): string[] {
+  return deck.sentinels.flatMap(({ start, area }, i) => {
+    const errors: string[] = [];
+    const name = `Sentinel ${i + 1}`;
+    if (!areaTiles(area).some((t) => !isWall(deck, t))) {
+      errors.push(`${name}: guarded area ${fmtArea(area)} contains no corridor tile`);
+    }
+    if (isWall(deck, start)) errors.push(`${name}: start ${fmt(start)} is a wall tile`);
+    else if (!areaTiles(area).some((t) => t.x === start.x && t.y === start.y)) {
+      errors.push(`${name}: start ${fmt(start)} is outside its guarded area ${fmtArea(area)}`);
+    }
+    return errors;
+  });
+}
+
+/** Every tile of a guarded area (corners inclusive, in any order). */
+function areaTiles({ from, to }: GuardedArea): TilePos[] {
+  const tiles: TilePos[] = [];
+  for (let y = Math.min(from.y, to.y); y <= Math.max(from.y, to.y); y++) {
+    for (let x = Math.min(from.x, to.x); x <= Math.max(from.x, to.x); x++) tiles.push({ x, y });
+  }
+  return tiles;
+}
+
+function fmtArea({ from, to }: GuardedArea): string {
+  return `${fmt(from)}-${fmt(to)}`;
 }
 
 function exactlyOne(found: readonly TilePos[], what: string): string[] {

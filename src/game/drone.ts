@@ -2,7 +2,8 @@ import { isWall, type Deck } from './deck';
 import { delta, step } from './grid';
 import { nextStepTowards } from './path';
 import { createPatroller, resetPatrol, updatePatroller, type Patrol } from './patroller';
-import type { Direction, DroneMode, DroneState, DroneType, TilePos } from './types';
+import { updateSentinel } from './sentinel';
+import type { Direction, DroneMode, DroneState, DroneType, GuardedArea, TilePos } from './types';
 
 const EPSILON = 1e-6;
 
@@ -14,10 +15,15 @@ const EPSILON = 1e-6;
 export interface Drone {
   readonly type: DroneType;
   mode: DroneMode;
-  /** Where the drone (re)starts: the drone bay for Hunters, the first waypoint for Patrollers. */
+  /**
+   * Where the drone (re)starts: the drone bay for Hunters, the first waypoint
+   * for Patrollers, the start tile for Sentinels.
+   */
   readonly start: TilePos;
   /** Hunters only: 0 = released first, 1 = second, ... */
   readonly releaseIndex: number;
+  /** Sentinels only: the guarded area. */
+  readonly area?: GuardedArea;
   tile: TilePos;
   offset: number;
   direction: Direction;
@@ -32,6 +38,8 @@ export interface DroneContext {
   /** Ticks since the deck started or since the last reset. */
   readonly elapsedTicks: number;
   readonly hunterReleaseDelayTicks: number;
+  /** Sentinels chase the robot when it is at most this many tiles away. */
+  readonly sentinelTriggerDistance: number;
   /** Tiles per tick. */
   readonly distance: number;
 }
@@ -50,6 +58,18 @@ export function createDrones(deck: Deck): Drone[] {
     });
   }
   drones.push(...deck.patrolRoutes.map(createPatroller));
+  for (const { start, area } of deck.sentinels) {
+    drones.push({
+      type: 'sentinel',
+      mode: initialMode('sentinel'),
+      start,
+      releaseIndex: 0,
+      area,
+      tile: start,
+      offset: 0,
+      direction: 'left',
+    });
+  }
   return drones;
 }
 
@@ -68,6 +88,8 @@ function initialMode(type: DroneType): DroneMode {
       return 'waiting';
     case 'patroller':
       return 'patrolling';
+    case 'sentinel':
+      return 'guarding';
   }
 }
 
@@ -76,8 +98,22 @@ export function isActive(drone: Drone): boolean {
   return drone.mode !== 'waiting';
 }
 
+/** Per-tick behaviour, one function per drone type. */
 export function updateDrone(drone: Drone, ctx: DroneContext): void {
-  if (drone.type === 'patroller') return updatePatroller(drone, ctx);
+  switch (drone.type) {
+    case 'hunter':
+      updateHunter(drone, ctx);
+      return;
+    case 'patroller':
+      updatePatroller(drone, ctx);
+      return;
+    case 'sentinel':
+      if (drone.area !== undefined) updateSentinel(drone, drone.area, ctx);
+      return;
+  }
+}
+
+function updateHunter(drone: Drone, ctx: DroneContext): void {
   switch (drone.mode) {
     case 'waiting':
       if (ctx.elapsedTicks >= (drone.releaseIndex + 1) * ctx.hunterReleaseDelayTicks) {
@@ -87,6 +123,8 @@ export function updateDrone(drone: Drone, ctx: DroneContext): void {
       return;
     case 'hunting':
       moveDrone(drone, ctx, () => nextStepTowards(ctx.deck, drone.tile, ctx.robotTile));
+      return;
+    default:
       return;
   }
 }
