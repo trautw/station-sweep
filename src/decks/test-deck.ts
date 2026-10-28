@@ -1,0 +1,23 @@
+import type { DeckDefinition } from '../game';
+
+// Simple walking-skeleton deck. Replaced by the real hand-made decks later.
+export const testDeck: DeckDefinition = {
+  name: 'Test Deck',
+  grid: [
+    '###################',
+    '#        #        #',
+    '# ## ### # ### ## #',
+    '#                 #',
+    '# ## # ##### # ## #',
+    '#    #   #   #    #',
+    '#### ### # ### ####',
+    '#                 #',
+    '# ## ######### ## #',
+    '#  #     R     #  #',
+    '## # # ##### # # ##',
+    '#    #   #   #    #',
+    '# ###### # ###### #',
+    '#                 #',
+    '###################',
+  ],
+};

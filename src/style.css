@@ -1,0 +1,19 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #05070f;
+  color: #cfe6ff;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: pre-wrap;
+}
+
+#deck {
+  display: block;
+}

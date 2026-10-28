@@ -1,0 +1,17 @@
+{
+  "name": "station-sweep",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && tsc --noEmit -p src/game && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^7.3.7",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "//": "The game logic must not touch DOM, canvas, audio, timers or storage: no DOM lib, no vite/client types here.",
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["."]
+}
