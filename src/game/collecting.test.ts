@@ -88,9 +88,9 @@ describe('collecting energy cells', () => {
     game.tick(4 * TICKS_PER_TILE);
 
     expect(game.state().phase).toBe('deckCleared');
-    expect(game.state().score).toBe(30);
+    expect(game.state().score).toBe(30 + 1000); // 3 cells + deck bonus
     expect(game.state().energyCells).toEqual([]);
-    expect(game.events()).toContainEqual({ type: 'deckCleared' });
+    expect(game.events()).toContainEqual({ type: 'deckCleared', bonus: 1000 });
   });
 
   it('stops the robot once the deck is cleared', () => {

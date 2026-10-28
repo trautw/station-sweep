@@ -1,5 +1,6 @@
 import type { DeckDefinition } from '../game';
 import { testDeck } from './test-deck';
+import { testDeckB } from './test-deck-b';
 
 /** All decks, in cycle order. Add new deck modules here. */
-export const decks: readonly DeckDefinition[] = [testDeck];
+export const decks: readonly DeckDefinition[] = [testDeck, testDeckB];

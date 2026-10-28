@@ -78,8 +78,17 @@ export interface LevelRow {
 /** Lives at the start of a game. */
 export const START_LIVES = 3;
 
+/** An extra life is awarded each time the score crosses a multiple of this. */
+export const EXTRA_LIFE_POINTS = 5000;
+
 /** The robot carries at most this many EMP charges; further charges stay on the deck. */
 export const MAX_CARRIED_EMP_CHARGES = 2;
+
+/**
+ * Ticks the 'deckCleared' phase lasts (long enough to show the "Deck cleared"
+ * message); then the next deck starts by itself.
+ */
+export const DECK_CLEARED_TICKS = 150;
 
 /** Drone speed never exceeds this fraction of the robot speed. */
 export const DRONE_SPEED_CAP = 0.9;
@@ -98,7 +107,12 @@ export type GameEvent =
   | { readonly type: 'empTriggered' }
   /** `points` = 250 x the drone's position in the salvage chain of the current EMP. */
   | { readonly type: 'droneSalvaged'; readonly tile: TilePos; readonly points: number }
-  | { readonly type: 'deckCleared' }
+  /** All energy cells collected; `bonus` = 1,000 + 500 per carried EMP charge, already added to the score. */
+  | { readonly type: 'deckCleared'; readonly bonus: number }
+  /** The score crossed a multiple of EXTRA_LIFE_POINTS; one life was added. */
+  | { readonly type: 'extraLife' }
+  /** The next deck of the cycle started (after a 'deckCleared' phase). */
+  | { readonly type: 'deckStarted'; readonly deck: string; readonly level: number }
   | { readonly type: 'robotCaught' }
   | { readonly type: 'gameOver' };
 

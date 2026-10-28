@@ -22,6 +22,7 @@ const renderer = new Renderer(canvas);
 
 const scoreEl = document.querySelector<HTMLElement>('#score');
 const livesEl = document.querySelector<HTMLElement>('#lives');
+const levelEl = document.querySelector<HTMLElement>('#level');
 const empEl = document.querySelector<HTMLElement>('#emp-charges');
 
 // The deck fills the space the top and bottom strips leave free. Refit whenever
@@ -36,11 +37,16 @@ const send = game.send.bind(game);
 attachKeyboard(window, send);
 attachSwipe(window, send);
 startLoop(
-  (ticks) => game.tick(ticks),
+  (ticks) => {
+    game.tick(ticks);
+    // Decks may differ in size: refit when the next deck starts.
+    if (game.events().some((e) => e.type === 'deckStarted')) fit();
+  },
   () => {
     const state = game.state();
     renderer.draw(state);
     if (scoreEl) scoreEl.textContent = String(state.score);
+    if (levelEl) levelEl.textContent = String(state.level);
     if (livesEl) livesEl.textContent = '\u25C6'.repeat(state.lives) || '-';
     if (empEl) {
       empEl.textContent =

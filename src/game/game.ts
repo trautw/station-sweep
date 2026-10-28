@@ -13,8 +13,10 @@ import {
 } from './drone';
 import { createRobot, giveDirection, moveRobot, robotSnapshot, type Robot } from './robot';
 import {
+  DECK_CLEARED_TICKS,
   DRONE_SPEED_CAP,
   EMP_RADIUS,
+  EXTRA_LIFE_POINTS,
   MAX_CARRIED_EMP_CHARGES,
   START_LIVES,
   TICKS_PER_SECOND,
@@ -32,6 +34,9 @@ import {
 const POINTS_PER_CELL = 10;
 /** A salvaged drone scores this times its position in the salvage chain. */
 const POINTS_PER_SALVAGE = 250;
+/** Clearing a deck scores this, plus DECK_BONUS_PER_CHARGE per carried EMP charge. */
+const DECK_BONUS = 1000;
+const DECK_BONUS_PER_CHARGE = 500;
 
 const tileKey = (t: TilePos): string => `${t.x},${t.y}`;
 
@@ -72,9 +77,13 @@ class Simulation implements Game {
   private phase: Phase = 'playing';
   private score = 0;
   private lives = START_LIVES;
+  /** Index of the current deck in the cycle. */
+  private deckIndex = 0;
   private deck: Deck;
   private robot: Robot;
   private drones: Drone[];
+  /** Ticks spent in the current 'deckCleared' phase. */
+  private deckClearedTicks = 0;
   /** Energy cells still on the deck, keyed by tile. Insertion order is row-major. */
   private energyCells = new Map<string, TilePos>();
   /** EMP charges lying on the deck, keyed by tile (row-major). */
@@ -89,15 +98,46 @@ class Simulation implements Game {
   private lastEvents: GameEvent[] = [];
 
   constructor(
-    _decks: readonly Deck[],
+    private readonly decks: readonly Deck[],
     private readonly levelTable: readonly LevelRow[],
     firstDeck: Deck,
   ) {
     this.deck = firstDeck;
     this.robot = createRobot(firstDeck.robotStart);
     this.drones = createDrones(firstDeck);
-    for (const cell of firstDeck.energyCells) this.energyCells.set(tileKey(cell), cell);
-    for (const charge of firstDeck.empCharges) this.empCharges.set(tileKey(charge), charge);
+    this.loadDeck(firstDeck);
+  }
+
+  /**
+   * Put `deck` in play: robot (stopped) and drones at their starts, energy
+   * cells and EMP charges as authored, Hunter release timer reset.
+   * Carried EMP charges, score, lives and level are kept.
+   */
+  private loadDeck(deck: Deck): void {
+    this.deck = deck;
+    this.robot = createRobot(deck.robotStart);
+    this.drones = createDrones(deck);
+    this.energyCells.clear();
+    this.empCharges.clear();
+    for (const cell of deck.energyCells) this.energyCells.set(tileKey(cell), cell);
+    for (const charge of deck.empCharges) this.empCharges.set(tileKey(charge), charge);
+    this.elapsedTicks = 0;
+    this.salvageChain = 0;
+    this.empTriggerPending = false;
+  }
+
+  /** The next deck of the cycle; after the last deck the first comes back one level higher. */
+  private startNextDeck(events: GameEvent[]): void {
+    this.deckIndex++;
+    if (this.deckIndex >= this.decks.length) {
+      this.deckIndex = 0;
+      this.level++;
+    }
+    const deck = this.decks[this.deckIndex];
+    if (deck === undefined) throw new Error('no decks');
+    this.loadDeck(deck);
+    this.phase = 'playing';
+    events.push({ type: 'deckStarted', deck: deck.name, level: this.level });
   }
 
   send(command: Command): void {
@@ -145,6 +185,12 @@ class Simulation implements Game {
   }
 
   private step(events: GameEvent[]): void {
+    if (this.phase === 'deckCleared') {
+      this.empTriggerPending = false;
+      this.deckClearedTicks++;
+      if (this.deckClearedTicks >= DECK_CLEARED_TICKS) this.startNextDeck(events);
+      return;
+    }
     if (this.phase !== 'playing') {
       this.empTriggerPending = false;
       return;
@@ -211,11 +257,25 @@ class Simulation implements Game {
     const cell = this.energyCells.get(key);
     if (cell === undefined) return;
     this.energyCells.delete(key);
-    this.score += POINTS_PER_CELL;
+    this.addScore(POINTS_PER_CELL, events);
     events.push({ type: 'cellCollected', tile: cell });
     if (this.energyCells.size === 0) {
       this.phase = 'deckCleared';
-      events.push({ type: 'deckCleared' });
+      this.deckClearedTicks = 0;
+      const bonus = DECK_BONUS + DECK_BONUS_PER_CHARGE * this.carriedEmpCharges;
+      events.push({ type: 'deckCleared', bonus });
+      this.addScore(bonus, events);
+    }
+  }
+
+  /** Add points; one extra life for every multiple of EXTRA_LIFE_POINTS the score crosses. */
+  private addScore(points: number, events: GameEvent[]): void {
+    const before = Math.floor(this.score / EXTRA_LIFE_POINTS);
+    this.score += points;
+    const after = Math.floor(this.score / EXTRA_LIFE_POINTS);
+    for (let i = before; i < after; i++) {
+      this.lives++;
+      events.push({ type: 'extraLife' });
     }
   }
 
@@ -232,7 +292,7 @@ class Simulation implements Game {
       const { tile } = droneSnapshot(drone);
       this.salvageChain++;
       const points = POINTS_PER_SALVAGE * this.salvageChain;
-      this.score += points;
+      this.addScore(points, events);
       salvage(drone, this.deck.droneBay, ticks);
       events.push({ type: 'droneSalvaged', tile, points });
     });
