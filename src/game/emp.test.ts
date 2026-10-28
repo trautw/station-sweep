@@ -194,6 +194,28 @@ describe('salvaging', () => {
   });
 });
 
+describe('EMP on Patrollers', () => {
+  it('shuts one down so the robot can salvage it for 250 points', () => {
+    // The Patroller starts at x=6 and chases the robot along the row; it is
+    // 4 tiles away when the robot (back at x=1 with the charge) triggers.
+    const game = startGame(['#RE           B#'], {
+      patrollers: [{ route: [{ x: 6, y: 0 }, { x: 10, y: 0 }] }],
+    });
+    drive(game, 'right', 1);
+    drive(game, 'left', 1);
+    game.send({ type: 'triggerEmp' });
+    game.tick(1);
+    expect(game.state().drones[0]!.mode).toBe('shutdown');
+
+    game.send({ type: 'direction', direction: 'right' });
+    while (game.state().drones[0]!.mode === 'shutdown') game.tick(1);
+    expect(game.events()).toContainEqual(
+      expect.objectContaining({ type: 'droneSalvaged', points: 250 }),
+    );
+    expect(game.state().lives).toBe(3);
+  });
+});
+
 describe('EMP on Sentinels', () => {
   // The Sentinel guards x 4..6; the robot picks up the charge and waits at x=1.
   const grid = ['#RE           B#'];

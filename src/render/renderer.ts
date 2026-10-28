@@ -8,6 +8,9 @@ const COLORS = {
   robotEye: '#05070f',
   hunter: '#ff3b5c',
   hunterEye: '#ffe6ea',
+  patroller: '#7d6bff',
+  patrollerBeam: 'rgba(125, 107, 255, 0.35)',
+  patrollerEye: '#eeeaff',
   sentinel: '#ffa630',
   sentinelCore: '#2a1500',
   overlay: 'rgba(5, 7, 15, 0.7)',
@@ -186,11 +189,51 @@ export class Renderer {
       case 'hunter':
         this.drawHunter(drone, robot);
         break;
+      case 'patroller':
+        this.drawPatroller(drone);
+        break;
       case 'sentinel':
         this.drawSentinel(drone, robot);
         break;
     }
     this.ctx.restore();
+  }
+
+  /**
+   * Patroller: indigo disc with a ring and a scanner eye facing its direction.
+   * While chasing, a beam reaches ahead and the glow is stronger.
+   */
+  private drawPatroller(drone: DroneState): void {
+    const { ctx, tileSize: t } = this;
+    const r = t * 0.4;
+    const chasing = drone.mode === 'chasing';
+    ctx.save();
+    ctx.translate((drone.position.x + 0.5) * t, (drone.position.y + 0.5) * t);
+    ctx.rotate(FACING_ANGLE[drone.direction]);
+    if (chasing) {
+      ctx.fillStyle = COLORS.patrollerBeam;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.5, 0);
+      ctx.lineTo(r * 3, -r * 0.7);
+      ctx.lineTo(r * 3, r * 0.7);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.shadowColor = COLORS.patroller;
+    ctx.shadowBlur = chasing ? t : t / 3;
+    ctx.fillStyle = COLORS.patroller;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.75, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = COLORS.patroller;
+    ctx.lineWidth = Math.max(1, t / 14);
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = COLORS.patrollerEye;
+    ctx.fillRect(r * 0.25, -r * 0.18, r * 0.5, r * 0.36);
+    ctx.restore();
   }
 
   /**

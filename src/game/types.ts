@@ -23,13 +23,23 @@ export interface SentinelDefinition {
 }
 
 /**
- * The drones of one deck. Ticket 07 adds `patrollers` (route waypoints) here.
+ * The drones of one deck.
  */
 export interface DeckDrones {
   /** Number of Hunters; they wait in the drone bay `B` and are released one after another. */
   readonly hunters?: number;
   /** Sentinels, each bound to its guarded area. */
   readonly sentinels?: readonly SentinelDefinition[];
+  /** Patrollers, each flying its route of waypoints in a loop. */
+  readonly patrollers?: readonly PatrollerDefinition[];
+}
+
+/**
+ * A Patroller starts at the first waypoint and flies to each waypoint in turn
+ * (shortest path between them), back to the first and round again.
+ */
+export interface PatrollerDefinition {
+  readonly route: readonly [TilePos, ...TilePos[]];
 }
 
 /** A deck as authored: a text grid (one string per row) plus typed drone definitions. */
@@ -94,8 +104,10 @@ export type GameEvent =
 
 export type Phase = 'playing' | 'deckCleared' | 'gameOver';
 
-/** Ticket 07 adds 'patroller'. */
-export type DroneType = 'hunter' | 'sentinel';
+export type DroneType =
+  | 'hunter'
+  | 'patroller'
+  | 'sentinel';
 
 /**
  * What a drone is doing. 'waiting': in the drone bay, not active (cannot catch).
@@ -105,11 +117,13 @@ export type DroneType = 'hunter' | 'sentinel';
 export type DroneMode =
   | 'waiting'
   | 'hunting'
+  /** Patroller flying its route of waypoints in a loop. */
+  | 'patrolling'
   /** Sentinel moving around inside its guarded area. */
   | 'guarding'
-  /** Sentinel (or Patroller) heading for the robot by the shortest path. */
+  /** Patroller (robot in line of sight) or Sentinel heading for the robot by the shortest path. */
   | 'chasing'
-  /** Sentinel heading back to its guarded area after the robot got out of range. */
+  /** Sentinel heading back to its guarded area, or Patroller to the nearest waypoint of its route. */
   | 'returning'
   /** Any type: hit by an EMP, stands still, cannot catch, can be salvaged; then resumes its mode. */
   | 'shutdown'

@@ -1,6 +1,7 @@
 import { isWall, type Deck } from './deck';
 import { delta, step } from './grid';
 import { nextStepTowards } from './path';
+import { createPatroller, resetPatrol, updatePatroller, type Patrol } from './patroller';
 import { updateSentinel } from './sentinel';
 import {
   TICKS_PER_SECOND,
@@ -22,7 +23,10 @@ const EPSILON = 1e-6;
 export interface Drone {
   readonly type: DroneType;
   mode: DroneMode;
-  /** Where the drone (re)starts: the drone bay for Hunters, the start tile for Sentinels. */
+  /**
+   * Where the drone (re)starts: the drone bay for Hunters, the first waypoint
+   * for Patrollers, the start tile for Sentinels.
+   */
   readonly start: TilePos;
   /** Hunters only: 0 = released first, 1 = second, ... */
   readonly releaseIndex: number;
@@ -37,6 +41,8 @@ export interface Drone {
   resumeMode: DroneMode;
   /** Ticks left in mode 'salvaged' until the drone is rebuilt. */
   rebuildTicks: number;
+  /** Patrollers only: route and the waypoint being flown to. */
+  readonly patrol?: Patrol;
 }
 
 /** What a drone may look at during one tick. */
@@ -68,6 +74,7 @@ export function createDrones(deck: Deck): Drone[] {
       rebuildTicks: 0,
     });
   }
+  drones.push(...deck.patrolRoutes.map(createPatroller));
   for (const { start, area } of deck.sentinels) {
     drones.push({
       type: 'sentinel',
@@ -92,6 +99,7 @@ export function resetDrone(drone: Drone): void {
   drone.offset = 0;
   drone.direction = 'left';
   drone.mode = initialMode(drone.type);
+  if (drone.patrol) resetPatrol(drone.patrol);
   drone.shutdownTicks = 0;
   drone.rebuildTicks = 0;
 }
@@ -129,6 +137,9 @@ function rebuiltMode(type: DroneType): DroneMode {
     case 'sentinel':
       // Heads back to its guarded area by the shortest path, then guards again.
       return 'returning';
+    case 'patroller':
+      // Flies back to its route, then patrols again.
+      return 'returning';
   }
 }
 
@@ -136,6 +147,8 @@ function initialMode(type: DroneType): DroneMode {
   switch (type) {
     case 'hunter':
       return 'waiting';
+    case 'patroller':
+      return 'patrolling';
     case 'sentinel':
       return 'guarding';
   }
@@ -164,6 +177,9 @@ export function updateDrone(drone: Drone, ctx: DroneContext): void {
   switch (drone.type) {
     case 'hunter':
       updateHunter(drone, ctx);
+      return;
+    case 'patroller':
+      updatePatroller(drone, ctx);
       return;
     case 'sentinel':
       if (drone.area !== undefined) updateSentinel(drone, drone.area, ctx);
