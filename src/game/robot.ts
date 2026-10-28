@@ -1,4 +1,4 @@
-import { isWall, type Deck } from './deck';
+import { airlockPartner, isWall, type Deck } from './deck';
 import { delta, opposite, step } from './grid';
 import type { Direction, RobotState, TilePos } from './types';
 
@@ -59,6 +59,8 @@ export function moveRobot(robot: Robot, deck: Deck, distance: number): void {
     if (robot.offset >= 1 - EPSILON) {
       robot.tile = step(robot.tile, robot.direction);
       robot.offset = 0;
+      // Entering an airlock: leave through its partner, keeping the direction.
+      robot.tile = airlockPartner(deck, robot.tile) ?? robot.tile;
     }
   }
 }

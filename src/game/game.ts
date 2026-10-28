@@ -82,6 +82,7 @@ class Simulation implements Game {
         width: this.deck.width,
         height: this.deck.height,
         walls: this.deck.walls,
+        airlocks: this.deck.airlocks,
       },
       robot: robotSnapshot(this.robot),
       energyCells: [...this.energyCells.values()],

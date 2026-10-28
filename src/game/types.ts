@@ -45,12 +45,20 @@ export interface RobotState {
   readonly bufferedTurn: Direction | null;
 }
 
+/** Two linked airlock tiles, marked in the grid by the same digit. */
+export interface AirlockPair {
+  readonly digit: number;
+  readonly tiles: readonly [TilePos, TilePos];
+}
+
 export interface DeckState {
   readonly name: string;
   readonly width: number;
   readonly height: number;
   /** Row-major wall map: walls[y][x]. */
   readonly walls: readonly (readonly boolean[])[];
+  /** Linked airlock pairs, ordered by digit. Airlock tiles are corridor tiles. */
+  readonly airlocks: readonly AirlockPair[];
 }
 
 export interface GameState {
