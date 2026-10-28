@@ -34,6 +34,11 @@ export function resetPatrol(patrol: Patrol): void {
   patrol.target = 0;
 }
 
+/** Rebuilt at `bay`: return to the nearest waypoint of the route, like after losing sight. */
+export function rebuildPatroller(patrol: Patrol, deck: Deck, bay: TilePos): void {
+  patrol.target = nearestWaypoint(deck, bay, patrol.route);
+}
+
 export function updatePatroller(drone: Drone, ctx: DroneContext): void {
   const patrol = drone.patrol;
   if (patrol === undefined) return;
