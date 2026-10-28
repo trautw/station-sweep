@@ -7,6 +7,8 @@ export interface Deck {
   readonly height: number;
   readonly walls: readonly (readonly boolean[])[];
   readonly robotStart: TilePos;
+  /** Energy cell tiles in row-major order. */
+  readonly energyCells: readonly TilePos[];
 }
 
 export type ParseResult =
@@ -15,11 +17,12 @@ export type ParseResult =
 
 /**
  * Grid characters. Extend here as new tile contents arrive
- * (`.` energy cell, `E` EMP charge, `B` drone bay, `1`-`9` airlocks).
+ * (`E` EMP charge, `B` drone bay, `1`-`9` airlocks).
  */
 const WALL = '#';
 const CORRIDOR = ' ';
 const ROBOT_START = 'R';
+const ENERGY_CELL = '.';
 
 export function parseDeck(def: DeckDefinition): ParseResult {
   const errors: string[] = [];
@@ -27,6 +30,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
   const width = Math.max(0, ...def.grid.map((row) => row.length));
   const walls: boolean[][] = [];
   const robotStarts: TilePos[] = [];
+  const energyCells: TilePos[] = [];
 
   for (let y = 0; y < height; y++) {
     const row = def.grid[y] ?? '';
@@ -45,6 +49,10 @@ export function parseDeck(def: DeckDefinition): ParseResult {
           wallRow.push(false);
           robotStarts.push({ x, y });
           break;
+        case ENERGY_CELL:
+          wallRow.push(false);
+          energyCells.push({ x, y });
+          break;
         default:
           wallRow.push(true);
           errors.push(`${def.name}: unknown grid character '${ch}' at (${x}, ${y})`);
@@ -57,7 +65,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
   if (robotStart === undefined) errors.push(`${def.name}: no robot start 'R'`);
   if (errors.length > 0 || robotStart === undefined) return { ok: false, errors };
 
-  return { ok: true, deck: { name: def.name, width, height, walls, robotStart } };
+  return { ok: true, deck: { name: def.name, width, height, walls, robotStart, energyCells } };
 }
 
 export function isWall(deck: Deck, pos: TilePos): boolean {
