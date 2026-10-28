@@ -6,6 +6,7 @@ const COLORS = {
   wallEdge: '#3fa9ff',
   robot: '#ffd23f',
   robotEye: '#05070f',
+  energyCell: '#5dffc8',
 };
 
 const FACING_ANGLE: Record<Direction, number> = {
@@ -58,6 +59,25 @@ export class Renderer {
         this.drawWallEdges(x, y, state);
       }
     }
+
+    // Energy cells: small glowing diamonds at tile centres.
+    ctx.save();
+    ctx.fillStyle = COLORS.energyCell;
+    ctx.shadowColor = COLORS.energyCell;
+    ctx.shadowBlur = t / 4;
+    const c = Math.max(1.5, t * 0.12);
+    for (const cell of state.energyCells) {
+      const x = (cell.x + 0.5) * t;
+      const y = (cell.y + 0.5) * t;
+      ctx.beginPath();
+      ctx.moveTo(x, y - c);
+      ctx.lineTo(x + c, y);
+      ctx.lineTo(x, y + c);
+      ctx.lineTo(x - c, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
 
     // Robot: rounded body with a "visor" pointing in its facing direction.
     const cx = (robot.position.x + 0.5) * t;

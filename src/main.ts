@@ -20,6 +20,8 @@ if (!result.ok) {
 const game = result.game;
 const renderer = new Renderer(canvas);
 
+const scoreEl = document.querySelector<HTMLElement>('#score');
+
 // The deck fills the space the top and bottom strips leave free. Refit whenever
 // that space changes (window resize, rotation, strip content growing) or the
 // device pixel ratio changes (browser zoom, moving to another screen).
@@ -33,5 +35,9 @@ attachKeyboard(window, send);
 attachSwipe(window, send);
 startLoop(
   (ticks) => game.tick(ticks),
-  () => renderer.draw(game.state()),
+  () => {
+    const state = game.state();
+    renderer.draw(state);
+    if (scoreEl) scoreEl.textContent = String(state.score);
+  },
 );
