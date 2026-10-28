@@ -6,5 +6,5 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tests: Hunters are released one after another after the delay; a Hunter moves along the shortest path to the robot; a Hunter is slower than the robot; an overlap of more than half a tile counts as caught; swapping positions counts as caught; being caught costs a life and resets positions but not energy cells; losing the last life ends the game
-- [ ] Hunters are drawn with their own recognisable look
+- [x] Tests: Hunters are released one after another after the delay; a Hunter moves along the shortest path to the robot; a Hunter is slower than the robot; an overlap of more than half a tile counts as caught; swapping positions counts as caught; being caught costs a life and resets positions but not energy cells; losing the last life ends the game
+- [x] Hunters are drawn with their own recognisable look
