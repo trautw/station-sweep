@@ -13,8 +13,8 @@ const DIRECTION_KEYS: Record<string, Direction> = {
 
 /**
  * Turns keyboard events into game commands. `phase` is read (never changed) so
- * one key can mean the command that fits: Enter/Space start or play again on
- * the title and game over screens, Space triggers an EMP while playing, and
+ * one key can mean the command that fits: Enter/Space start on the title
+ * screen, Enter plays again after game over, Space triggers an EMP, and
  * P/Escape pause or resume.
  * Returns a function that detaches the listener.
  */
@@ -39,7 +39,8 @@ function commandFor(code: string, phase: Phase): Command | undefined {
   }
   if (code === 'Enter' || code === 'Space') {
     if (phase === 'title') return { type: 'start' };
-    if (phase === 'gameOver') return { type: 'playAgain' };
+    // Only Enter: a Space meant as a last-second EMP must not skip the game over screen.
+    if (phase === 'gameOver') return code === 'Enter' ? { type: 'playAgain' } : undefined;
     if (code === 'Space') return { type: 'triggerEmp' };
     return undefined;
   }
