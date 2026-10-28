@@ -11,7 +11,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: 8px;
   white-space: pre-wrap;
+}
+
+#lives {
+  font-size: 18px;
+  letter-spacing: 2px;
 }
 
 #deck {

@@ -17,12 +17,21 @@ if (!result.ok) {
 const game = result.game;
 const renderer = new Renderer(canvas);
 
-const fit = () => renderer.resize(game.state(), window.innerWidth - 32, window.innerHeight - 32);
+const livesEl = document.querySelector<HTMLElement>('#lives');
+const showLives = (lives: number) => {
+  if (livesEl) livesEl.textContent = `Lives ${'\u25C6 '.repeat(lives).trim() || '-'}`;
+};
+
+const fit = () => renderer.resize(game.state(), window.innerWidth - 32, window.innerHeight - 64);
 fit();
 window.addEventListener('resize', fit);
 
 attachKeyboard(window, (command) => game.send(command));
 startLoop(
   (ticks) => game.tick(ticks),
-  () => renderer.draw(game.state()),
+  () => {
+    const state = game.state();
+    renderer.draw(state);
+    showLives(state.lives);
+  },
 );

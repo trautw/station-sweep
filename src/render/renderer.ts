@@ -1,4 +1,4 @@
-import type { Direction, GameState } from '../game';
+import type { Direction, DroneState, GameState } from '../game';
 
 const COLORS = {
   background: '#05070f',
@@ -6,6 +6,11 @@ const COLORS = {
   wallEdge: '#3fa9ff',
   robot: '#ffd23f',
   robotEye: '#05070f',
+  hunter: '#ff3b5c',
+  hunterEye: '#ffe6ea',
+  droneBay: '#7a2a3a',
+  overlay: 'rgba(5, 7, 15, 0.7)',
+  text: '#ff3b5c',
 };
 
 const FACING_ANGLE: Record<Direction, number> = {
@@ -57,6 +62,8 @@ export class Renderer {
       }
     }
 
+    for (const drone of state.drones) this.drawDrone(drone, state.robot.position);
+
     // Robot: rounded body with a "visor" pointing in its facing direction.
     const cx = (robot.position.x + 0.5) * t;
     const cy = (robot.position.y + 0.5) * t;
@@ -73,6 +80,53 @@ export class Renderer {
     ctx.shadowBlur = 0;
     ctx.fillStyle = COLORS.robotEye;
     ctx.fillRect(r * 0.2, -r * 0.5, r * 0.5, r);
+    ctx.restore();
+
+    if (state.phase === 'gameOver') {
+      ctx.fillStyle = COLORS.overlay;
+      ctx.fillRect(0, 0, deck.width * t, deck.height * t);
+      ctx.fillStyle = COLORS.text;
+      ctx.font = `bold ${Math.round(t * 1.4)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('GAME OVER', (deck.width * t) / 2, (deck.height * t) / 2);
+    }
+  }
+
+  private drawDrone(drone: DroneState, robot: { x: number; y: number }): void {
+    switch (drone.type) {
+      case 'hunter':
+        this.drawHunter(drone, robot);
+        break;
+    }
+  }
+
+  /** Hunter: red spiked diamond with an eye that tracks the robot; dim while waiting in the bay. */
+  private drawHunter(drone: DroneState, robot: { x: number; y: number }): void {
+    const { ctx, tileSize: t } = this;
+    const cx = (drone.position.x + 0.5) * t;
+    const cy = (drone.position.y + 0.5) * t;
+    const r = t * 0.45;
+    ctx.save();
+    ctx.globalAlpha = drone.mode === 'waiting' ? 0.45 : 1;
+    ctx.translate(cx, cy);
+    ctx.shadowColor = COLORS.hunter;
+    ctx.shadowBlur = drone.mode === 'waiting' ? 0 : t / 2;
+    ctx.fillStyle = COLORS.hunter;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const rr = i % 2 === 0 ? r : r * 0.6;
+      ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    const look = Math.atan2(robot.y - drone.position.y, robot.x - drone.position.x);
+    ctx.fillStyle = COLORS.hunterEye;
+    ctx.beginPath();
+    ctx.arc(Math.cos(look) * r * 0.2, Math.sin(look) * r * 0.2, r * 0.22, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
