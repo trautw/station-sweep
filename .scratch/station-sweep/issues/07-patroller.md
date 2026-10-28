@@ -6,5 +6,5 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tests: a Patroller follows its route; it starts chasing as soon as it has line of sight; a wall between them blocks line of sight; it returns to its route after losing line of sight; a waypoint in a wall produces a validation error
+- [x] Tests: a Patroller follows its route; it starts chasing as soon as it has line of sight; a wall between them blocks line of sight; it returns to its route after losing line of sight; a waypoint in a wall produces a validation error
 - [ ] Patrollers have their own recognisable look

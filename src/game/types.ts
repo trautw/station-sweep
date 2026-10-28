@@ -11,8 +11,7 @@ export interface TilePos {
 }
 
 /**
- * The drones of one deck. Tickets 07/08 add `patrollers` (route waypoints)
- * and `sentinels` (guarded area) here.
+ * The drones of one deck. Ticket 08 adds `sentinels` (guarded area) here.
  */
 export interface DeckDrones {
   /** Number of Hunters; they wait in the drone bay `B` and are released one after another. */
