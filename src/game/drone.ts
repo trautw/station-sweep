@@ -1,7 +1,14 @@
 import { isWall, type Deck } from './deck';
 import { delta, step } from './grid';
 import { nextStepTowards } from './path';
-import type { Direction, DroneMode, DroneState, DroneType, TilePos } from './types';
+import {
+  TICKS_PER_SECOND,
+  type Direction,
+  type DroneMode,
+  type DroneState,
+  type DroneType,
+  type TilePos,
+} from './types';
 
 const EPSILON = 1e-6;
 
@@ -20,6 +27,12 @@ export interface Drone {
   tile: TilePos;
   offset: number;
   direction: Direction;
+  /** Ticks left in mode 'shutdown'. */
+  shutdownTicks: number;
+  /** The mode a shut-down drone goes back to when it wakes up. */
+  resumeMode: DroneMode;
+  /** Ticks left in mode 'salvaged' until the drone is rebuilt. */
+  rebuildTicks: number;
 }
 
 /** What a drone may look at during one tick. */
@@ -44,6 +57,9 @@ export function createDrones(deck: Deck): Drone[] {
       tile: deck.droneBay,
       offset: 0,
       direction: 'left',
+      shutdownTicks: 0,
+      resumeMode: 'waiting',
+      rebuildTicks: 0,
     });
   }
   return drones;
@@ -55,6 +71,41 @@ export function resetDrone(drone: Drone): void {
   drone.offset = 0;
   drone.direction = 'left';
   drone.mode = initialMode(drone.type);
+  drone.shutdownTicks = 0;
+  drone.rebuildTicks = 0;
+}
+
+/**
+ * EMP hit: an active drone stops for `ticks` ticks, then resumes what it was
+ * doing. Hitting an already shut-down drone restarts its shutdown time.
+ * Drones waiting in the drone bay (to be released or rebuilt) are not affected.
+ */
+export function shutDown(drone: Drone, ticks: number): void {
+  if (drone.mode === 'waiting' || drone.mode === 'salvaged') return;
+  if (drone.mode !== 'shutdown') drone.resumeMode = drone.mode;
+  drone.mode = 'shutdown';
+  drone.shutdownTicks = ticks;
+}
+
+export function isShutDown(drone: Drone): boolean {
+  return drone.mode === 'shutdown';
+}
+
+/** Salvaged: the drone goes to the drone bay and waits `ticks` ticks to be rebuilt. */
+export function salvage(drone: Drone, droneBay: TilePos, ticks: number): void {
+  drone.mode = 'salvaged';
+  drone.tile = droneBay;
+  drone.offset = 0;
+  drone.shutdownTicks = 0;
+  drone.rebuildTicks = ticks;
+}
+
+/** The mode a drone starts in once rebuilt. Ticket 10: Patrollers/Sentinels return to route/area. */
+function rebuiltMode(type: DroneType): DroneMode {
+  switch (type) {
+    case 'hunter':
+      return 'hunting';
+  }
 }
 
 function initialMode(type: DroneType): DroneMode {
@@ -66,7 +117,7 @@ function initialMode(type: DroneType): DroneMode {
 
 /** Active drones can catch the robot. */
 export function isActive(drone: Drone): boolean {
-  return drone.mode !== 'waiting';
+  return drone.mode !== 'waiting' && drone.mode !== 'shutdown' && drone.mode !== 'salvaged';
 }
 
 export function updateDrone(drone: Drone, ctx: DroneContext): void {
@@ -79,6 +130,14 @@ export function updateDrone(drone: Drone, ctx: DroneContext): void {
       return;
     case 'hunting':
       moveDrone(drone, ctx, () => nextStepTowards(ctx.deck, drone.tile, ctx.robotTile));
+      return;
+    case 'shutdown':
+      drone.shutdownTicks--;
+      if (drone.shutdownTicks <= 0) drone.mode = drone.resumeMode;
+      return;
+    case 'salvaged':
+      drone.rebuildTicks--;
+      if (drone.rebuildTicks <= 0) drone.mode = rebuiltMode(drone.type);
       return;
   }
 }
@@ -117,5 +176,6 @@ export function droneSnapshot(drone: Drone): DroneState {
     position: dronePosition(drone),
     tile: drone.offset > 0.5 ? step(drone.tile, drone.direction) : drone.tile,
     direction: drone.direction,
+    shutdownTimeLeft: drone.mode === 'shutdown' ? drone.shutdownTicks / TICKS_PER_SECOND : 0,
   };
 }

@@ -41,18 +41,35 @@ export interface LevelRow {
   readonly droneSpeed?: number;
   /** Seconds between Hunter releases from the drone bay (default 3). */
   readonly hunterReleaseDelay?: number;
+  /** Seconds a drone hit by an EMP stays shut down (default 5). */
+  readonly shutdownTime?: number;
+  /** Seconds until a salvaged drone is rebuilt in the drone bay (default 5). */
+  readonly rebuildDelay?: number;
 }
 
 /** Lives at the start of a game. */
 export const START_LIVES = 3;
 
+/** The robot carries at most this many EMP charges; further charges stay on the deck. */
+export const MAX_CARRIED_EMP_CHARGES = 2;
+
 /** Drone speed never exceeds this fraction of the robot speed. */
 export const DRONE_SPEED_CAP = 0.9;
 
-export type Command = { readonly type: 'direction'; readonly direction: Direction };
+export type Command =
+  | { readonly type: 'direction'; readonly direction: Direction }
+  /** Use up one carried EMP charge (Space / double tap). Does nothing without a charge. */
+  | { readonly type: 'triggerEmp' };
+
+/** An EMP shuts down every drone whose tile centre is at most this many tiles from the robot's. */
+export const EMP_RADIUS = 5;
 
 export type GameEvent =
   | { readonly type: 'cellCollected'; readonly tile: TilePos }
+  | { readonly type: 'empPickedUp'; readonly tile: TilePos }
+  | { readonly type: 'empTriggered' }
+  /** `points` = 250 x the drone's position in the salvage chain of the current EMP. */
+  | { readonly type: 'droneSalvaged'; readonly tile: TilePos; readonly points: number }
   | { readonly type: 'deckCleared' }
   | { readonly type: 'robotCaught' }
   | { readonly type: 'gameOver' };
@@ -64,10 +81,13 @@ export type DroneType = 'hunter';
 
 /**
  * What a drone is doing. 'waiting': in the drone bay, not active (cannot catch).
- * 'hunting': heading for the robot by the shortest path. Later tickets add
- * patrolling/chasing/guarding/returning and shutdown/salvaged.
+ * 'hunting': heading for the robot by the shortest path.
+ * 'shutdown' (any type): hit by an EMP, stands still, cannot catch, can be salvaged;
+ * afterwards it resumes the mode it had. 'salvaged' (any type): waiting in the
+ * drone bay to be rebuilt, not active.
+ * Later tickets add patrolling/chasing/guarding/returning.
  */
-export type DroneMode = 'waiting' | 'hunting';
+export type DroneMode = 'waiting' | 'hunting' | 'shutdown' | 'salvaged';
 
 export interface DroneState {
   readonly type: DroneType;
@@ -77,6 +97,8 @@ export interface DroneState {
   /** The tile the drone is on (nearest tile centre). */
   readonly tile: TilePos;
   readonly direction: Direction;
+  /** Seconds of shutdown left (0 unless mode is 'shutdown'); rendering flickers in the last second. */
+  readonly shutdownTimeLeft: number;
 }
 
 export interface RobotState {
@@ -114,6 +136,10 @@ export interface GameState {
   readonly drones: readonly DroneState[];
   /** Energy cells still lying on the deck, in row-major order. */
   readonly energyCells: readonly TilePos[];
+  /** EMP charges still lying on the deck, in row-major order. */
+  readonly empCharges: readonly TilePos[];
+  /** EMP charges the robot carries (0 to MAX_CARRIED_EMP_CHARGES). */
+  readonly carriedEmpCharges: number;
   readonly score: number;
   readonly lives: number;
 }

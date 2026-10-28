@@ -15,6 +15,8 @@ export interface Deck {
   readonly hunters: number;
   /** Energy cell tiles in row-major order. */
   readonly energyCells: readonly TilePos[];
+  /** EMP charge tiles (`E`) in row-major order. */
+  readonly empCharges: readonly TilePos[];
   /**
    * Linked airlock pairs, ordered by digit. Airlock tiles are plain corridor
    * tiles in `walls`; only the robot uses the link (see `airlockPartner`).
@@ -28,13 +30,14 @@ export type ParseResult =
 
 /**
  * Grid characters. Extend here as new tile contents arrive
- * (`E` EMP charge, `1`-`9` airlocks).
+ * (e.g. more drone markers).
  */
 const WALL = '#';
 const CORRIDOR = ' ';
 const ROBOT_START = 'R';
 const DRONE_BAY = 'B';
 const ENERGY_CELL = '.';
+const EMP_CHARGE = 'E';
 const AIRLOCK = /^[1-9]$/;
 
 /**
@@ -49,6 +52,7 @@ interface RawDeck {
   readonly robotStarts: readonly TilePos[];
   readonly droneBays: readonly TilePos[];
   readonly energyCells: readonly TilePos[];
+  readonly empCharges: readonly TilePos[];
   /** Airlock tiles per digit, in row-major order. */
   readonly airlockTiles: ReadonlyMap<number, readonly TilePos[]>;
 }
@@ -61,6 +65,7 @@ const VALIDATION_RULES: readonly ValidationRule[] = [
   (deck) => exactlyOne(deck.droneBays, "drone bay 'B'"),
   (deck) => unpairedAirlocks(deck),
   (deck) => unreachableFromRobot(deck, deck.energyCells, 'energy cell'),
+  (deck) => unreachableFromRobot(deck, deck.empCharges, 'EMP charge'),
 ];
 
 export function parseDeck(def: DeckDefinition): ParseResult {
@@ -71,6 +76,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
   const robotStarts: TilePos[] = [];
   const droneBays: TilePos[] = [];
   const energyCells: TilePos[] = [];
+  const empCharges: TilePos[] = [];
   const airlockTiles = new Map<number, TilePos[]>();
 
   for (let y = 0; y < height; y++) {
@@ -93,6 +99,9 @@ export function parseDeck(def: DeckDefinition): ParseResult {
         case ENERGY_CELL:
           energyCells.push({ x, y });
           break;
+        case EMP_CHARGE:
+          empCharges.push({ x, y });
+          break;
         default:
           if (AIRLOCK.test(ch)) {
             const digit = Number(ch);
@@ -114,6 +123,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
     robotStarts,
     droneBays,
     energyCells,
+    empCharges,
     airlockTiles,
   };
   for (const rule of VALIDATION_RULES) errors.push(...rule(raw));
@@ -133,6 +143,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
       robotStart,
       droneBay,
       energyCells,
+      empCharges,
       hunters: def.drones?.hunters ?? 0,
       airlocks: airlockPairs(airlockTiles),
     },

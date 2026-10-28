@@ -4,13 +4,18 @@ import {
   dronePosition,
   droneSnapshot,
   isActive,
+  isShutDown,
   resetDrone,
+  salvage,
+  shutDown,
   updateDrone,
   type Drone,
 } from './drone';
 import { createRobot, giveDirection, moveRobot, robotSnapshot, type Robot } from './robot';
 import {
   DRONE_SPEED_CAP,
+  EMP_RADIUS,
+  MAX_CARRIED_EMP_CHARGES,
   START_LIVES,
   TICKS_PER_SECOND,
   type Command,
@@ -25,12 +30,16 @@ import {
 } from './types';
 
 const POINTS_PER_CELL = 10;
+/** A salvaged drone scores this times its position in the salvage chain. */
+const POINTS_PER_SALVAGE = 250;
 
 const tileKey = (t: TilePos): string => `${t.x},${t.y}`;
 
 /** Fallbacks for optional level table fields. Real values live in src/data/levels.ts. */
 const DEFAULT_DRONE_SPEED = 5;
 const DEFAULT_HUNTER_RELEASE_DELAY = 3;
+const DEFAULT_SHUTDOWN_TIME = 5;
+const DEFAULT_REBUILD_DELAY = 5;
 
 /** Caught when robot and an active drone are closer than this (overlap of more than half a tile). */
 const CATCH_DISTANCE = 0.5 - 1e-6;
@@ -67,6 +76,13 @@ class Simulation implements Game {
   private drones: Drone[];
   /** Energy cells still on the deck, keyed by tile. Insertion order is row-major. */
   private energyCells = new Map<string, TilePos>();
+  /** EMP charges lying on the deck, keyed by tile (row-major). */
+  private empCharges = new Map<string, TilePos>();
+  private carriedEmpCharges = 0;
+  /** An EMP trigger command waiting for the next tick. */
+  private empTriggerPending = false;
+  /** Drones salvaged since the last EMP went off. */
+  private salvageChain = 0;
   /** Ticks since the deck started or since the robot was last caught. */
   private elapsedTicks = 0;
   private lastEvents: GameEvent[] = [];
@@ -80,6 +96,7 @@ class Simulation implements Game {
     this.robot = createRobot(firstDeck.robotStart);
     this.drones = createDrones(firstDeck);
     for (const cell of firstDeck.energyCells) this.energyCells.set(tileKey(cell), cell);
+    for (const charge of firstDeck.empCharges) this.empCharges.set(tileKey(charge), charge);
   }
 
   send(command: Command): void {
@@ -87,6 +104,10 @@ class Simulation implements Game {
     switch (command.type) {
       case 'direction':
         giveDirection(this.robot, command.direction);
+        break;
+      case 'triggerEmp':
+        // Applied at the start of the next tick, so its event shows up in that tick.
+        this.empTriggerPending = true;
         break;
     }
   }
@@ -111,6 +132,8 @@ class Simulation implements Game {
       robot: robotSnapshot(this.robot),
       drones: this.drones.map(droneSnapshot),
       energyCells: [...this.energyCells.values()],
+      empCharges: [...this.empCharges.values()],
+      carriedEmpCharges: this.carriedEmpCharges,
       score: this.score,
       lives: this.lives,
     };
@@ -121,12 +144,17 @@ class Simulation implements Game {
   }
 
   private step(events: GameEvent[]): void {
-    if (this.phase !== 'playing') return;
+    if (this.phase !== 'playing') {
+      this.empTriggerPending = false;
+      return;
+    }
     const row = this.levelRow();
     this.elapsedTicks++;
+    if (this.empTriggerPending) this.triggerEmp(row, events);
     const robotBefore = robotSnapshot(this.robot).position;
     const dronesBefore = this.drones.map(dronePosition);
     moveRobot(this.robot, this.deck, row.robotSpeed / TICKS_PER_SECOND);
+    this.pickUpEmpCharge(events);
     this.collectEnergyCell(events);
     if (this.phase !== 'playing') return;
 
@@ -144,7 +172,34 @@ class Simulation implements Game {
     };
     for (const drone of this.drones) updateDrone(drone, ctx);
 
+    this.salvageDrones(row, robotBefore, dronesBefore, events);
     if (this.robotCaught(robotBefore, dronesBefore)) this.catchRobot(events);
+  }
+
+  /** Use up one carried charge and shut down every drone within EMP_RADIUS of the robot. */
+  private triggerEmp(row: LevelRow, events: GameEvent[]): void {
+    this.empTriggerPending = false;
+    if (this.carriedEmpCharges === 0) return;
+    this.carriedEmpCharges--;
+    this.salvageChain = 0;
+    const robot = robotSnapshot(this.robot).tile;
+    const ticks = Math.round((row.shutdownTime ?? DEFAULT_SHUTDOWN_TIME) * TICKS_PER_SECOND);
+    for (const drone of this.drones) {
+      const { tile } = droneSnapshot(drone);
+      if (Math.hypot(tile.x - robot.x, tile.y - robot.y) <= EMP_RADIUS + 1e-6) shutDown(drone, ticks);
+    }
+    events.push({ type: 'empTriggered' });
+  }
+
+  /** The robot picks up the EMP charge on its tile, unless it already carries the maximum. */
+  private pickUpEmpCharge(events: GameEvent[]): void {
+    if (this.carriedEmpCharges >= MAX_CARRIED_EMP_CHARGES) return;
+    const key = tileKey(robotSnapshot(this.robot).tile);
+    const charge = this.empCharges.get(key);
+    if (charge === undefined) return;
+    this.empCharges.delete(key);
+    this.carriedEmpCharges++;
+    events.push({ type: 'empPickedUp', tile: charge });
   }
 
   /** The robot collects the energy cell on the tile it is on (its nearest tile). */
@@ -162,19 +217,41 @@ class Simulation implements Game {
     }
   }
 
+  /** Salvage every shut-down drone the robot runs into (same overlap rule as being caught). */
+  private salvageDrones(
+    row: LevelRow,
+    robotBefore: TilePos,
+    dronesBefore: readonly TilePos[],
+    events: GameEvent[],
+  ): void {
+    const ticks = Math.round((row.rebuildDelay ?? DEFAULT_REBUILD_DELAY) * TICKS_PER_SECOND);
+    this.drones.forEach((drone, i) => {
+      if (!isShutDown(drone) || !this.touches(drone, robotBefore, dronesBefore[i])) return;
+      const { tile } = droneSnapshot(drone);
+      this.salvageChain++;
+      const points = POINTS_PER_SALVAGE * this.salvageChain;
+      this.score += points;
+      salvage(drone, this.deck.droneBay, ticks);
+      events.push({ type: 'droneSalvaged', tile, points });
+    });
+  }
+
   /**
    * Caught by an active drone that overlaps the robot by more than half a
    * tile, or that swapped positions with it during this tick.
    */
   private robotCaught(robotBefore: TilePos, dronesBefore: readonly TilePos[]): boolean {
+    return this.drones.some(
+      (drone, i) => isActive(drone) && this.touches(drone, robotBefore, dronesBefore[i]),
+    );
+  }
+
+  /** The robot overlaps `drone` by more than half a tile, or they swapped positions this tick. */
+  private touches(drone: Drone, robotBefore: TilePos, droneBefore: TilePos | undefined): boolean {
     const robot = robotSnapshot(this.robot).position;
-    return this.drones.some((drone, i) => {
-      if (!isActive(drone)) return false;
-      const pos = dronePosition(drone);
-      if (Math.hypot(pos.x - robot.x, pos.y - robot.y) < CATCH_DISTANCE) return true;
-      const before = dronesBefore[i] ?? pos;
-      return swapped(robotBefore, robot, before, pos);
-    });
+    const pos = dronePosition(drone);
+    if (Math.hypot(pos.x - robot.x, pos.y - robot.y) < CATCH_DISTANCE) return true;
+    return swapped(robotBefore, robot, droneBefore ?? pos, pos);
   }
 
   /** Lose a life; reset robot and drones to their start positions. Energy cells stay as they are. */
