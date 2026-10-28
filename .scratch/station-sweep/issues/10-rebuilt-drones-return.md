@@ -6,4 +6,4 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tests: a rebuilt Patroller returns to its route and patrols again; a rebuilt Sentinel returns to its guarded area; a returning drone catches the robot as normal
+- [x] Tests: a rebuilt Patroller returns to its route and patrols again; a rebuilt Sentinel returns to its guarded area; a returning drone catches the robot as normal

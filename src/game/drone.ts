@@ -1,7 +1,7 @@
 import { isWall, type Deck } from './deck';
 import { delta, step } from './grid';
 import { nextStepTowards } from './path';
-import { createPatroller, resetPatrol, updatePatroller, type Patrol } from './patroller';
+import { createPatroller, rebuildPatroller, resetPatrol, updatePatroller, type Patrol } from './patroller';
 import { updateSentinel } from './sentinel';
 import {
   TICKS_PER_SECOND,
@@ -129,17 +129,25 @@ export function salvage(drone: Drone, droneBay: TilePos, ticks: number): void {
   drone.rebuildTicks = ticks;
 }
 
-/** The mode a drone starts in once rebuilt. Ticket 10: Patrollers/Sentinels return to route/area. */
-function rebuiltMode(type: DroneType): DroneMode {
-  switch (type) {
+/**
+ * Rebuilt in the drone bay, keeping its type. A Hunter hunts again at once;
+ * a Patroller flies to the nearest waypoint of its route and a Sentinel to its
+ * guarded area (both by the shortest path, in mode 'returning'), then they
+ * carry on as normal. A returning drone is active, so it can catch the robot.
+ */
+function rebuild(drone: Drone, deck: Deck): void {
+  switch (drone.type) {
     case 'hunter':
-      return 'hunting';
-    case 'sentinel':
-      // Heads back to its guarded area by the shortest path, then guards again.
-      return 'returning';
+      drone.mode = 'hunting';
+      return;
     case 'patroller':
-      // Flies back to its route, then patrols again.
-      return 'returning';
+      drone.mode = 'returning';
+      if (drone.patrol) rebuildPatroller(drone.patrol, deck, drone.tile);
+      return;
+    case 'sentinel':
+      // Heads for its start tile; guards again on the first tile of its area.
+      drone.mode = 'returning';
+      return;
   }
 }
 
@@ -171,7 +179,7 @@ export function updateDrone(drone: Drone, ctx: DroneContext): void {
   }
   if (drone.mode === 'salvaged') {
     drone.rebuildTicks--;
-    if (drone.rebuildTicks <= 0) drone.mode = rebuiltMode(drone.type);
+    if (drone.rebuildTicks <= 0) rebuild(drone, ctx.deck);
     return;
   }
   switch (drone.type) {
