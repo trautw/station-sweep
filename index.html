@@ -2,13 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Station Sweep</title>
   </head>
   <body>
-    <!-- Provisional lives readout until ticket 04 adds the top strip. -->
-    <div id="lives"></div>
-    <canvas id="deck"></canvas>
+    <div id="app">
+      <header id="top-strip" class="strip">
+        <span>SCORE <span id="score">0</span></span>
+        <span>LIVES <span id="lives"></span></span>
+      </header>
+      <main id="deck-area">
+        <canvas id="deck"></canvas>
+      </main>
+      <footer id="bottom-strip" class="strip"></footer>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

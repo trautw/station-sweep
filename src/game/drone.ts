@@ -35,18 +35,16 @@ export interface DroneContext {
 
 export function createDrones(deck: Deck): Drone[] {
   const drones: Drone[] = [];
-  if (deck.droneBay !== null) {
-    for (let i = 0; i < deck.hunters; i++) {
-      drones.push({
-        type: 'hunter',
-        mode: 'waiting',
-        start: deck.droneBay,
-        releaseIndex: i,
-        tile: deck.droneBay,
-        offset: 0,
-        direction: 'left',
-      });
-    }
+  for (let i = 0; i < deck.hunters; i++) {
+    drones.push({
+      type: 'hunter',
+      mode: 'waiting',
+      start: deck.droneBay,
+      releaseIndex: i,
+      tile: deck.droneBay,
+      offset: 0,
+      direction: 'left',
+    });
   }
   return drones;
 }

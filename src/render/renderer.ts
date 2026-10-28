@@ -8,9 +8,9 @@ const COLORS = {
   robotEye: '#05070f',
   hunter: '#ff3b5c',
   hunterEye: '#ffe6ea',
-  droneBay: '#7a2a3a',
   overlay: 'rgba(5, 7, 15, 0.7)',
   text: '#ff3b5c',
+  energyCell: '#5dffc8',
 };
 
 const FACING_ANGLE: Record<Direction, number> = {
@@ -34,8 +34,10 @@ export class Renderer {
   /** Fit the deck into the given CSS-pixel box. */
   resize(state: GameState, maxWidth: number, maxHeight: number): void {
     const { width, height } = state.deck;
-    this.tileSize = Math.max(4, Math.floor(Math.min(maxWidth / width, maxHeight / height)));
     const dpr = window.devicePixelRatio || 1;
+    // Largest tile size that fits, snapped to whole device pixels so tile edges stay crisp.
+    const fit = Math.min(maxWidth / width, maxHeight / height);
+    this.tileSize = Math.max(4, Math.floor(fit * dpr) / dpr);
     const cssW = width * this.tileSize;
     const cssH = height * this.tileSize;
     this.canvas.style.width = `${cssW}px`;
@@ -61,6 +63,25 @@ export class Renderer {
         this.drawWallEdges(x, y, state);
       }
     }
+
+    // Energy cells: small glowing diamonds at tile centres.
+    ctx.save();
+    ctx.fillStyle = COLORS.energyCell;
+    ctx.shadowColor = COLORS.energyCell;
+    ctx.shadowBlur = t / 4;
+    const c = Math.max(1.5, t * 0.12);
+    for (const cell of state.energyCells) {
+      const x = (cell.x + 0.5) * t;
+      const y = (cell.y + 0.5) * t;
+      ctx.beginPath();
+      ctx.moveTo(x, y - c);
+      ctx.lineTo(x + c, y);
+      ctx.lineTo(x, y + c);
+      ctx.lineTo(x - c, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
 
     for (const drone of state.drones) this.drawDrone(drone, state.robot.position);
 
@@ -129,6 +150,7 @@ export class Renderer {
     ctx.fill();
     ctx.restore();
   }
+
 
   private drawWallEdges(x: number, y: number, state: GameState): void {
     const { ctx, tileSize: t } = this;

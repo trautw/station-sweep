@@ -52,10 +52,12 @@ export const DRONE_SPEED_CAP = 0.9;
 export type Command = { readonly type: 'direction'; readonly direction: Direction };
 
 export type GameEvent =
+  | { readonly type: 'cellCollected'; readonly tile: TilePos }
+  | { readonly type: 'deckCleared' }
   | { readonly type: 'robotCaught' }
   | { readonly type: 'gameOver' };
 
-export type Phase = 'playing' | 'gameOver';
+export type Phase = 'playing' | 'deckCleared' | 'gameOver';
 
 /** Tickets 07/08 add 'patroller' | 'sentinel'. */
 export type DroneType = 'hunter';
@@ -102,6 +104,9 @@ export interface GameState {
   readonly deck: DeckState;
   readonly robot: RobotState;
   readonly drones: readonly DroneState[];
+  /** Energy cells still lying on the deck, in row-major order. */
+  readonly energyCells: readonly TilePos[];
+  readonly score: number;
   readonly lives: number;
 }
 

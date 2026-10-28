@@ -151,6 +151,16 @@ describe('getting caught', () => {
     expect(game.state().drones.map((d) => d.mode)).toEqual(['hunting', 'waiting']);
   });
 
+  it('keeps collected energy cells collected', () => {
+    const game = startGame(['#.R..    B#'], 1);
+    game.send({ type: 'direction', direction: 'right' });
+    tickUntilCaught(game);
+    expect(game.state().lives).toBe(2);
+    expect(game.state().energyCells).toEqual([{ x: 1, y: 0 }]);
+    expect(game.state().score).toBe(20);
+    expect(game.state().robot.tile).toEqual({ x: 2, y: 0 });
+  });
+
   it('never happens with a drone still waiting in the drone bay', () => {
     const game = startGame(['#R B#'], 1, [{ robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 10 }]);
     game.send({ type: 'direction', direction: 'right' });

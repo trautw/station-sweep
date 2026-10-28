@@ -6,5 +6,5 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tests: a missing or duplicated `R` or `B` produces a clear error; an unreachable energy cell produces an error naming its position; a valid deck produces no errors
-- [ ] The test deck used by the app passes validation
+- [x] Tests: a missing or duplicated `R` or `B` produces a clear error; an unreachable energy cell produces an error naming its position; a valid deck produces no errors
+- [x] The test deck used by the app passes validation

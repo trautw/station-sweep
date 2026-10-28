@@ -24,6 +24,10 @@ import {
   type TilePos,
 } from './types';
 
+const POINTS_PER_CELL = 10;
+
+const tileKey = (t: TilePos): string => `${t.x},${t.y}`;
+
 /** Fallbacks for optional level table fields. Real values live in src/data/levels.ts. */
 const DEFAULT_DRONE_SPEED = 5;
 const DEFAULT_HUNTER_RELEASE_DELAY = 3;
@@ -56,10 +60,13 @@ export function createGame(
 class Simulation implements Game {
   private level = 1;
   private phase: Phase = 'playing';
+  private score = 0;
   private lives = START_LIVES;
   private deck: Deck;
   private robot: Robot;
   private drones: Drone[];
+  /** Energy cells still on the deck, keyed by tile. Insertion order is row-major. */
+  private energyCells = new Map<string, TilePos>();
   /** Ticks since the deck started or since the robot was last caught. */
   private elapsedTicks = 0;
   private lastEvents: GameEvent[] = [];
@@ -72,6 +79,7 @@ class Simulation implements Game {
     this.deck = firstDeck;
     this.robot = createRobot(firstDeck.robotStart);
     this.drones = createDrones(firstDeck);
+    for (const cell of firstDeck.energyCells) this.energyCells.set(tileKey(cell), cell);
   }
 
   send(command: Command): void {
@@ -101,6 +109,8 @@ class Simulation implements Game {
       },
       robot: robotSnapshot(this.robot),
       drones: this.drones.map(droneSnapshot),
+      energyCells: [...this.energyCells.values()],
+      score: this.score,
       lives: this.lives,
     };
   }
@@ -116,6 +126,8 @@ class Simulation implements Game {
     const robotBefore = robotSnapshot(this.robot).position;
     const dronesBefore = this.drones.map(dronePosition);
     moveRobot(this.robot, this.deck, row.robotSpeed / TICKS_PER_SECOND);
+    this.collectEnergyCell(events);
+    if (this.phase !== 'playing') return;
 
     const droneSpeed = Math.min(
       row.droneSpeed ?? DEFAULT_DRONE_SPEED,
@@ -132,6 +144,21 @@ class Simulation implements Game {
     for (const drone of this.drones) updateDrone(drone, ctx);
 
     if (this.robotCaught(robotBefore, dronesBefore)) this.catchRobot(events);
+  }
+
+  /** The robot collects the energy cell on the tile it is on (its nearest tile). */
+  private collectEnergyCell(events: GameEvent[]): void {
+    const { tile } = robotSnapshot(this.robot);
+    const key = tileKey(tile);
+    const cell = this.energyCells.get(key);
+    if (cell === undefined) return;
+    this.energyCells.delete(key);
+    this.score += POINTS_PER_CELL;
+    events.push({ type: 'cellCollected', tile: cell });
+    if (this.energyCells.size === 0) {
+      this.phase = 'deckCleared';
+      events.push({ type: 'deckCleared' });
+    }
   }
 
   /**

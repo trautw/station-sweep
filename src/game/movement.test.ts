@@ -18,7 +18,7 @@ describe('robot movement', () => {
   it('waits on its start tile until it is given a direction', () => {
     const game = startGame([
       '#######',
-      '#  R  #',
+      '#B R  #',
       '#######',
     ]);
     game.tick(5 * TICKS_PER_TILE);
@@ -30,6 +30,7 @@ describe('robot movement', () => {
     const game = startGame([
       '#######',
       '#R    #',
+      '#B#####',
       '#######',
     ]);
     game.send({ type: 'direction', direction: 'right' });
@@ -47,6 +48,7 @@ describe('robot movement', () => {
       '#######',
       '#### ##',
       '#R    #',
+      '#B#####',
       '#######',
     ]);
     game.send({ type: 'direction', direction: 'right' });
@@ -68,7 +70,7 @@ describe('robot movement', () => {
       '#######',
       '#### ##',
       '#R    #',
-      '#### ##',
+      '#B## ##',
       '#######',
     ]);
     game.send({ type: 'direction', direction: 'right' });
@@ -86,6 +88,7 @@ describe('robot movement', () => {
     const game = startGame([
       '#######',
       '#R    #',
+      '#B#####',
       '#######',
     ]);
     game.send({ type: 'direction', direction: 'right' });
@@ -105,7 +108,7 @@ describe('robot movement', () => {
     const game = startGame([
       '#######',
       '#R   ##',
-      '#### ##',
+      '#B## ##',
       '#######',
     ]);
     game.send({ type: 'direction', direction: 'right' });
@@ -125,7 +128,7 @@ describe('robot movement', () => {
 
 describe('creating a game', () => {
   it('reports an error instead of a game when the deck has no robot start', () => {
-    const result = createGame([{ name: 'empty', grid: ['###', '# #', '###'] }], [{ robotSpeed: 6 }]);
+    const result = createGame([{ name: 'empty', grid: ['###', '#B#', '###'] }], [{ robotSpeed: 6 }]);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.join()).toMatch(/robot start/);
   });
