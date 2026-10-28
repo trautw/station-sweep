@@ -1,40 +1,62 @@
-import { isWall, type Deck } from './deck';
-import { step } from './grid';
+import { DIRECTIONS, isWall, sameTile, step, tileKey, type Grid } from './grid';
 import type { Direction, TilePos } from './types';
 
-/** Fixed neighbour order so ties between equally short paths resolve deterministically. */
-const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
+/** How a breadth-first search reached a tile. */
+interface Reached {
+  /** Steps from the start (an airlock jump counts as one). */
+  readonly distance: number;
+  /** The direction of the first step from the start (null for the start, or after a first-step jump). */
+  readonly firstStep: Direction | null;
+}
+
+interface SearchOptions {
+  /** Extra one-step links from a tile, e.g. an airlock to its partner. */
+  readonly links?: (tile: TilePos) => TilePos | null;
+  /** Stop as soon as this tile is reached. */
+  readonly until?: TilePos;
+}
 
 /**
- * First step of a shortest path from `from` to `to` over corridor tiles
- * (breadth-first search). Airlocks are plain corridor tiles here: drones never
- * use them. Returns null when `from` equals `to` or `to` is unreachable.
+ * Breadth-first search over corridor tiles from `from`, trying directions in
+ * DIRECTIONS order so ties between equally short paths resolve
+ * deterministically. Returns every reached tile, keyed by tileKey.
  */
-export function nextStepTowards(deck: Deck, from: TilePos, to: TilePos): Direction | null {
-  if (from.x === to.x && from.y === to.y) return null;
-  const key = (p: TilePos) => p.y * deck.width + p.x;
-  // For every visited tile: the first direction taken from `from` to reach it.
-  const firstStep = new Map<number, Direction>();
-  const queue: TilePos[] = [];
-  const visited = new Set<number>([key(from)]);
-  for (const dir of DIRECTIONS) {
-    const next = step(from, dir);
-    if (isWall(deck, next) || visited.has(key(next))) continue;
-    visited.add(key(next));
-    firstStep.set(key(next), dir);
-    queue.push(next);
-  }
+export function searchFrom(
+  grid: Grid,
+  from: TilePos,
+  { links, until }: SearchOptions = {},
+): Map<string, Reached> {
+  const reached = new Map<string, Reached>([[tileKey(from), { distance: 0, firstStep: null }]]);
+  const queue = [from];
   for (let i = 0; i < queue.length; i++) {
     const tile = queue[i]!;
-    const first = firstStep.get(key(tile))!;
-    if (tile.x === to.x && tile.y === to.y) return first;
-    for (const dir of DIRECTIONS) {
-      const next = step(tile, dir);
-      if (isWall(deck, next) || visited.has(key(next))) continue;
-      visited.add(key(next));
-      firstStep.set(key(next), first);
-      queue.push(next);
+    const here = reached.get(tileKey(tile))!;
+    if (until !== undefined && sameTile(tile, until)) break;
+    const next: [TilePos, Direction | null][] = DIRECTIONS.map((dir) => [step(tile, dir), dir]);
+    const link = links?.(tile) ?? null;
+    if (link !== null) next.push([link, null]);
+    for (const [to, dir] of next) {
+      if (isWall(grid, to) || reached.has(tileKey(to))) continue;
+      const firstStep = i === 0 ? dir : here.firstStep;
+      reached.set(tileKey(to), { distance: here.distance + 1, firstStep });
+      queue.push(to);
     }
   }
-  return null;
+  return reached;
+}
+
+/**
+ * First step of a shortest path from `from` to `to` over corridor tiles.
+ * Airlocks are plain corridor tiles here: drones never use them. Returns null
+ * when `from` equals `to` or `to` is unreachable.
+ */
+export function nextStepTowards(deck: Grid, from: TilePos, to: TilePos): Direction | null {
+  if (sameTile(from, to)) return null;
+  return searchFrom(deck, from, { until: to }).get(tileKey(to))?.firstStep ?? null;
+}
+
+/** Path length (in tiles, over corridor tiles, no airlocks) from `from` to `to`; Infinity if unreachable. */
+export function pathLengths(deck: Grid, from: TilePos): (to: TilePos) => number {
+  const reached = searchFrom(deck, from);
+  return (to) => reached.get(tileKey(to))?.distance ?? Infinity;
 }

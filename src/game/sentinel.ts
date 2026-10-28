@@ -1,11 +1,7 @@
-import { isWall } from './deck';
-import { moveDrone, type Drone, type DroneContext } from './drone';
-import { opposite, step } from './grid';
+import { droneTile, moveDrone, type DroneContext, type Sentinel } from './drone';
+import { DIRECTIONS, isWall, opposite, step } from './grid';
 import { nextStepTowards } from './path';
 import type { Direction, GuardedArea, TilePos } from './types';
-
-/** Order in which a guarding Sentinel tries new directions when it can't go straight on. */
-const DIRECTIONS: readonly Direction[] = ['up', 'left', 'down', 'right'];
 
 export function inArea(area: GuardedArea, tile: TilePos): boolean {
   const minX = Math.min(area.from.x, area.to.x);
@@ -20,7 +16,8 @@ export function inArea(area: GuardedArea, tile: TilePos): boolean {
  * robot once the robot is within the trigger distance; heads back to its start
  * once the robot is out of range and guards again on re-entering the area.
  */
-export function updateSentinel(drone: Drone, area: GuardedArea, ctx: DroneContext): void {
+export function updateSentinel(drone: Sentinel, ctx: DroneContext): void {
+  const area = drone.area;
   if (inRange(drone, ctx)) drone.mode = 'chasing';
   else if (drone.mode === 'chasing') drone.mode = 'returning';
   moveDrone(drone, ctx, () => {
@@ -37,14 +34,14 @@ export function updateSentinel(drone: Drone, area: GuardedArea, ctx: DroneContex
 }
 
 /** The robot is at most the trigger distance away (between the tiles the two are on). */
-function inRange(drone: Drone, ctx: DroneContext): boolean {
-  const tile = drone.offset > 0.5 ? step(drone.tile, drone.direction) : drone.tile;
+function inRange(drone: Sentinel, ctx: DroneContext): boolean {
+  const tile = droneTile(drone);
   const distance = Math.hypot(tile.x - ctx.robotTile.x, tile.y - ctx.robotTile.y);
   return distance <= ctx.sentinelTriggerDistance + 1e-9;
 }
 
 /** Keep going straight while that stays in the area; otherwise turn, reversing only as a last resort. */
-function guardStep(drone: Drone, area: GuardedArea, ctx: DroneContext): Direction | null {
+function guardStep(drone: Sentinel, area: GuardedArea, ctx: DroneContext): Direction | null {
   const open = (dir: Direction) => {
     const next = step(drone.tile, dir);
     return inArea(area, next) && !isWall(ctx.deck, next);

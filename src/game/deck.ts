@@ -1,14 +1,12 @@
-import { step } from './grid';
+import { isWall, tileKey } from './grid';
+import { searchFrom } from './path';
 import type {
   AirlockPair,
   DeckDefinition,
-  Direction,
   GuardedArea,
   SentinelDefinition,
   TilePos,
 } from './types';
-
-const DIRECTIONS: readonly Direction[] = ['up', 'down', 'left', 'right'];
 
 /** Internal deck model produced by the parser. */
 export interface Deck {
@@ -250,43 +248,20 @@ function exactlyOne(found: readonly TilePos[], what: string): string[] {
   return [];
 }
 
-/** Reports every target tile the robot cannot reach. Skipped unless there is exactly one start. */
+/**
+ * Reports every target tile the robot cannot reach over corridor tiles (a
+ * paired airlock also leads to its partner). Skipped unless there is exactly one start.
+ */
 function unreachableFromRobot(deck: RawDeck, targets: readonly TilePos[], what: string): string[] {
   const start = deck.robotStarts[0];
   if (start === undefined || deck.robotStarts.length !== 1) return [];
-  const reachable = reachableTiles(deck, start);
-  return targets
-    .filter((t) => !reachable.has(key(t)))
-    .map((t) => `${what} at ${fmt(t)} is not reachable from the robot start`);
-}
-
-/** Flood fill over corridor tiles; a paired airlock also leads to its partner. */
-function reachableTiles(deck: RawDeck, start: TilePos): Set<string> {
   const airlocks = { airlocks: airlockPairs(deck.airlockTiles) };
-  const seen = new Set([key(start)]);
-  const queue = [start];
-  for (let pos = queue.shift(); pos !== undefined; pos = queue.shift()) {
-    const partner = airlockPartner(airlocks, pos);
-    const neighbours = DIRECTIONS.map((dir) => step(pos, dir));
-    if (partner !== null) neighbours.push(partner);
-    for (const next of neighbours) {
-      if (isWall(deck, next) || seen.has(key(next))) continue;
-      seen.add(key(next));
-      queue.push(next);
-    }
-  }
-  return seen;
-}
-
-function key(pos: TilePos): string {
-  return `${pos.x},${pos.y}`;
+  const reachable = searchFrom(deck, start, { links: (tile) => airlockPartner(airlocks, tile) });
+  return targets
+    .filter((t) => !reachable.has(tileKey(t)))
+    .map((t) => `${what} at ${fmt(t)} is not reachable from the robot start`);
 }
 
 function fmt(pos: TilePos): string {
   return `(${pos.x}, ${pos.y})`;
-}
-
-export function isWall(deck: Pick<Deck, 'width' | 'height' | 'walls'>, pos: TilePos): boolean {
-  if (pos.y < 0 || pos.y >= deck.height || pos.x < 0 || pos.x >= deck.width) return true;
-  return deck.walls[pos.y]?.[pos.x] ?? true;
 }

@@ -3,6 +3,7 @@ import {
   createDrones,
   dronePosition,
   droneSnapshot,
+  droneTile,
   isActive,
   isShutDown,
   resetDrone,
@@ -11,14 +12,22 @@ import {
   updateDrone,
   type Drone,
 } from './drone';
-import { createRobot, giveDirection, moveRobot, robotSnapshot, type Robot } from './robot';
+import { tileKey } from './grid';
+import { levelSettings, type LevelSettings } from './level';
+import {
+  createRobot,
+  giveDirection,
+  moveRobot,
+  robotPosition,
+  robotSnapshot,
+  robotTile,
+  type Robot,
+} from './robot';
 import {
   DECK_CLEARED_TICKS,
-  DRONE_SPEED_CAP,
   EXTRA_LIFE_POINTS,
   MAX_CARRIED_EMP_CHARGES,
   START_LIVES,
-  TICKS_PER_SECOND,
   type Command,
   type CreateGameResult,
   type DeckDefinition,
@@ -36,8 +45,6 @@ const POINTS_PER_SALVAGE = 250;
 /** Clearing a deck scores this, plus DECK_BONUS_PER_CHARGE per carried EMP charge. */
 const DECK_BONUS = 1000;
 const DECK_BONUS_PER_CHARGE = 500;
-
-const tileKey = (t: TilePos): string => `${t.x},${t.y}`;
 
 /** Caught when robot and an active drone are closer than this (overlap of more than half a tile). */
 const CATCH_DISTANCE = 0.5 - 1e-6;
@@ -222,44 +229,43 @@ class Simulation implements Game {
       this.empTriggerPending = false;
       return;
     }
-    const row = this.levelRow();
+    const settings = levelSettings(this.levelTable, this.level);
     this.elapsedTicks++;
-    if (this.empTriggerPending) this.triggerEmp(row, events);
-    const robotBefore = robotSnapshot(this.robot).position;
+    if (this.empTriggerPending) this.triggerEmp(settings, events);
+    const robotBefore = robotPosition(this.robot);
     const dronesBefore = this.drones.map(dronePosition);
-    const robotJumped = moveRobot(this.robot, this.deck, row.robotSpeed / TICKS_PER_SECOND);
+    const robotJumped = moveRobot(this.robot, this.deck, settings.robotTilesPerTick);
     this.pickUpEmpCharge(events);
     this.collectEnergyCell(events);
     if (this.phase !== 'playing') return;
 
-    const droneSpeed = Math.min(row.droneSpeed, row.robotSpeed * DRONE_SPEED_CAP);
     const ctx = {
       deck: this.deck,
-      robotTile: robotSnapshot(this.robot).tile,
+      robotTile: robotTile(this.robot),
       elapsedTicks: this.elapsedTicks,
-      hunterReleaseDelayTicks: row.hunterReleaseDelay * TICKS_PER_SECOND,
-      sentinelTriggerDistance: row.sentinelTriggerDistance,
-      distance: droneSpeed / TICKS_PER_SECOND,
+      hunterReleaseDelayTicks: settings.hunterReleaseDelayTicks,
+      sentinelTriggerDistance: settings.sentinelTriggerDistance,
+      tilesPerTick: settings.droneTilesPerTick,
     };
     for (const drone of this.drones) updateDrone(drone, ctx);
 
     // An airlock jump is no swap: before the jump is not where the robot came from.
     const robotFrom = robotJumped ? null : robotBefore;
-    this.salvageDrones(row, robotFrom, dronesBefore, events);
+    this.salvageDrones(settings, robotFrom, dronesBefore, events);
     if (this.robotCaught(robotFrom, dronesBefore)) this.catchRobot(events);
   }
 
   /** Use up one carried charge and shut down every drone within the level's EMP radius of the robot. */
-  private triggerEmp(row: LevelRow, events: GameEvent[]): void {
+  private triggerEmp(settings: LevelSettings, events: GameEvent[]): void {
     this.empTriggerPending = false;
     if (this.carriedEmpCharges === 0) return;
     this.carriedEmpCharges--;
     const emp = ++this.empsTriggered;
-    const robot = robotSnapshot(this.robot).tile;
-    const ticks = Math.round(row.shutdownTime * TICKS_PER_SECOND);
+    const robot = robotTile(this.robot);
     for (const drone of this.drones) {
-      const { tile } = droneSnapshot(drone);
-      if (Math.hypot(tile.x - robot.x, tile.y - robot.y) <= row.empRadius + 1e-6) shutDown(drone, ticks, emp);
+      const tile = droneTile(drone);
+      const inRadius = Math.hypot(tile.x - robot.x, tile.y - robot.y) <= settings.empRadius + 1e-6;
+      if (inRadius) shutDown(drone, settings.shutdownTicks, emp);
     }
     events.push({ type: 'empTriggered' });
   }
@@ -267,7 +273,7 @@ class Simulation implements Game {
   /** The robot picks up the EMP charge on its tile, unless it already carries the maximum. */
   private pickUpEmpCharge(events: GameEvent[]): void {
     if (this.carriedEmpCharges >= MAX_CARRIED_EMP_CHARGES) return;
-    const key = tileKey(robotSnapshot(this.robot).tile);
+    const key = tileKey(robotTile(this.robot));
     const charge = this.empCharges.get(key);
     if (charge === undefined) return;
     this.empCharges.delete(key);
@@ -277,8 +283,7 @@ class Simulation implements Game {
 
   /** The robot collects the energy cell on the tile it is on (its nearest tile). */
   private collectEnergyCell(events: GameEvent[]): void {
-    const { tile } = robotSnapshot(this.robot);
-    const key = tileKey(tile);
+    const key = tileKey(robotTile(this.robot));
     const cell = this.energyCells.get(key);
     if (cell === undefined) return;
     this.energyCells.delete(key);
@@ -306,20 +311,19 @@ class Simulation implements Game {
 
   /** Salvage every shut-down drone the robot runs into (same overlap rule as being caught). */
   private salvageDrones(
-    row: LevelRow,
+    settings: LevelSettings,
     robotBefore: TilePos | null,
     dronesBefore: readonly TilePos[],
     events: GameEvent[],
   ): void {
-    const ticks = Math.round(row.rebuildDelay * TICKS_PER_SECOND);
     this.drones.forEach((drone, i) => {
       if (!isShutDown(drone) || !this.touches(drone, robotBefore, dronesBefore[i])) return;
-      const { tile } = droneSnapshot(drone);
+      const tile = droneTile(drone);
       const chain = (this.salvageChains.get(drone.shutdownBy) ?? 0) + 1;
       this.salvageChains.set(drone.shutdownBy, chain);
       const points = POINTS_PER_SALVAGE * chain;
       this.addScore(points, events);
-      salvage(drone, this.deck.droneBay, ticks);
+      salvage(drone, this.deck.droneBay, settings.rebuildTicks);
       events.push({ type: 'droneSalvaged', tile, points });
     });
   }
@@ -339,7 +343,7 @@ class Simulation implements Game {
    * positions this tick. `robotBefore` is null after an airlock jump.
    */
   private touches(drone: Drone, robotBefore: TilePos | null, droneBefore: TilePos | undefined): boolean {
-    const robot = robotSnapshot(this.robot).position;
+    const robot = robotPosition(this.robot);
     const pos = dronePosition(drone);
     if (Math.hypot(pos.x - robot.x, pos.y - robot.y) < CATCH_DISTANCE) return true;
     return robotBefore !== null && swapped(robotBefore, robot, droneBefore ?? pos, pos);
@@ -357,13 +361,6 @@ class Simulation implements Game {
     this.robot = createRobot(this.deck.robotStart);
     for (const drone of this.drones) resetDrone(drone);
     this.elapsedTicks = 0;
-  }
-
-  private levelRow(): LevelRow {
-    const index = Math.min(this.level, this.levelTable.length) - 1;
-    const row = this.levelTable[index];
-    if (row === undefined) throw new Error('level table is empty');
-    return row;
   }
 }
 

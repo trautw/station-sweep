@@ -1,18 +1,10 @@
-import { airlockPartner, isWall, type Deck } from './deck';
-import { delta, opposite, step } from './grid';
+import { airlockPartner, type Deck } from './deck';
+import { isWall, opposite, step } from './grid';
+import { advance, nearestTile, position, type Mover } from './mover';
 import type { Direction, RobotState, TilePos } from './types';
 
-const EPSILON = 1e-6;
-
-/**
- * Mutable robot model. The robot is always "on" `tile`; while moving it is
- * `offset` (0..1) of the way from that tile's centre towards the next tile in
- * `direction`.
- */
-export interface Robot {
-  tile: TilePos;
-  offset: number;
-  direction: Direction;
+/** Mutable robot model; see Mover for `tile`, `offset` and `direction`. */
+export interface Robot extends Mover {
   moving: boolean;
   bufferedTurn: Direction | null;
 }
@@ -38,44 +30,47 @@ export function giveDirection(robot: Robot, dir: Direction): void {
 /** Move the robot by `distance` tiles along corridors. Returns true if it jumped through an airlock. */
 export function moveRobot(robot: Robot, deck: Deck, distance: number): boolean {
   let jumped = false;
-  let remaining = distance;
-  while (remaining > EPSILON) {
-    if (robot.offset === 0) {
-      // At a tile centre: take the buffered turn if this tile allows it.
-      const turn = robot.bufferedTurn;
-      if (turn !== null && !isWall(deck, step(robot.tile, turn))) {
-        robot.direction = turn;
-        robot.bufferedTurn = null;
-        robot.moving = true;
-      }
-      // A stopped robot stays put until it gets a direction it can take.
-      if (!robot.moving || isWall(deck, step(robot.tile, robot.direction))) {
-        robot.moving = false;
-        return jumped;
-      }
+  const atCentre = () => {
+    // Take the buffered turn if this tile allows it.
+    const turn = robot.bufferedTurn;
+    if (turn !== null && !isWall(deck, step(robot.tile, turn))) {
+      robot.direction = turn;
+      robot.bufferedTurn = null;
+      robot.moving = true;
     }
-    const advance = Math.min(remaining, 1 - robot.offset);
-    robot.offset += advance;
-    remaining -= advance;
-    if (robot.offset >= 1 - EPSILON) {
-      robot.tile = step(robot.tile, robot.direction);
-      robot.offset = 0;
-      // Entering an airlock: leave through its partner, keeping the direction.
-      const partner = airlockPartner(deck, robot.tile);
-      if (partner !== null) {
-        robot.tile = partner;
-        jumped = true;
-      }
+    // A stopped robot stays put until it gets a direction it can take.
+    if (!robot.moving || isWall(deck, step(robot.tile, robot.direction))) {
+      robot.moving = false;
+      return false;
     }
-  }
+    return true;
+  };
+  const arrived = () => {
+    // Entering an airlock: leave through its partner, keeping the direction.
+    const partner = airlockPartner(deck, robot.tile);
+    if (partner !== null) {
+      robot.tile = partner;
+      jumped = true;
+    }
+  };
+  advance(robot, distance, atCentre, arrived);
   return jumped;
 }
 
+/** The tile the robot is on (nearest tile centre). */
+export function robotTile(robot: Robot): TilePos {
+  return nearestTile(robot);
+}
+
+/** Smooth robot position in tile units. */
+export function robotPosition(robot: Robot): TilePos {
+  return position(robot);
+}
+
 export function robotSnapshot(robot: Robot): RobotState {
-  const d = delta(robot.direction);
   return {
-    position: { x: robot.tile.x + d.x * robot.offset, y: robot.tile.y + d.y * robot.offset },
-    tile: robot.offset > 0.5 ? step(robot.tile, robot.direction) : robot.tile,
+    position: robotPosition(robot),
+    tile: robotTile(robot),
     direction: robot.direction,
     moving: robot.moving,
     bufferedTurn: robot.bufferedTurn,
