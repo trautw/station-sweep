@@ -2,12 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Station Sweep</title>
   </head>
   <body>
-    <div id="top-strip"><span>SCORE <span id="score">0</span></span></div>
-    <canvas id="deck"></canvas>
+    <div id="app">
+      <header id="top-strip" class="strip">
+        <span>SCORE <span id="score">0</span></span>
+      </header>
+      <main id="deck-area">
+        <canvas id="deck"></canvas>
+      </main>
+      <footer id="bottom-strip" class="strip"></footer>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

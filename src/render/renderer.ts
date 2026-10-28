@@ -30,8 +30,10 @@ export class Renderer {
   /** Fit the deck into the given CSS-pixel box. */
   resize(state: GameState, maxWidth: number, maxHeight: number): void {
     const { width, height } = state.deck;
-    this.tileSize = Math.max(4, Math.floor(Math.min(maxWidth / width, maxHeight / height)));
     const dpr = window.devicePixelRatio || 1;
+    // Largest tile size that fits, snapped to whole device pixels so tile edges stay crisp.
+    const fit = Math.min(maxWidth / width, maxHeight / height);
+    this.tileSize = Math.max(4, Math.floor(fit * dpr) / dpr);
     const cssW = width * this.tileSize;
     const cssH = height * this.tileSize;
     this.canvas.style.width = `${cssW}px`;
