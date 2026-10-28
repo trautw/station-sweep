@@ -2,16 +2,53 @@ html,
 body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   background: #05070f;
   color: #cfe6ff;
   font-family: system-ui, sans-serif;
 }
 
 body {
+  /* Swipes steer the robot: no scrolling, pinch-zoom or pull-to-refresh. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Portrait layout: top strip, deck (takes all remaining space), bottom strip. */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* HUD strips: append items as children; they lay out in a row with space between. */
+.strip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 8px;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#deck-area {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  white-space: pre-wrap;
+  overflow: hidden;
 }
 
 #deck {

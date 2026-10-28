@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] One swipe sends exactly one turn command; the input layer only sends commands and never changes the state directly
-- [ ] The deck fills the width of a phone in portrait format, stays sharp on high-DPI screens, and the page doesn't scroll
-- [ ] The desktop window can be resized without distorting the deck
+- [x] One swipe sends exactly one turn command; the input layer only sends commands and never changes the state directly
+- [x] The deck fills the width of a phone in portrait format, stays sharp on high-DPI screens, and the page doesn't scroll
+- [x] The desktop window can be resized without distorting the deck
