@@ -102,4 +102,43 @@ describe('Patrollers', () => {
     open.tick(1);
     expect(patroller(open).mode).toBe('chasing');
   });
+
+  it('go back to the nearest waypoint of their route after losing line of sight, and carry on', () => {
+    const game = startGame(
+      [
+        '##########',
+        '#R       #',
+        '# ########',
+        '# ########',
+        '#B########',
+        '##########',
+      ],
+      [[{ x: 8, y: 1 }, { x: 6, y: 1 }]],
+    );
+    // The robot waits in plain sight while the Patroller chases it 3 tiles down the row ...
+    game.tick(3 * DRONE_TICKS_PER_TILE);
+    expect(patroller(game).mode).toBe('chasing');
+    expect(patroller(game).position).toEqual({ x: 5, y: 1 });
+
+    // ... then ducks round the corner.
+    game.send({ type: 'direction', direction: 'down' });
+    const modes: string[] = [];
+    const visited: string[] = [];
+    let backOnRoute: TilePos | null = null;
+    for (let i = 0; i < 10 * DRONE_TICKS_PER_TILE; i++) {
+      game.tick(1);
+      const { mode, tile } = patroller(game);
+      if (modes.at(-1) !== mode) modes.push(mode);
+      if (mode === 'patrolling') {
+        backOnRoute ??= tile;
+        if (visited.at(-1) !== `${tile.x},${tile.y}`) visited.push(`${tile.x},${tile.y}`);
+      }
+    }
+    expect(game.state().lives).toBe(3);
+    expect(modes).toEqual(['chasing', 'returning', 'patrolling']);
+    // (6,1) is 2 tiles away, the first waypoint (8,1) 4.
+    expect(backOnRoute).toEqual({ x: 6, y: 1 });
+    // Then it flies its route again: on to (8,1), back to (6,1), ...
+    expect(visited.slice(0, 5)).toEqual(['6,1', '7,1', '8,1', '7,1', '6,1']);
+  });
 });
