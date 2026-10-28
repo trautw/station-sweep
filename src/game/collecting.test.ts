@@ -7,6 +7,7 @@ const TICKS_PER_TILE = 10;
 function startGame(grid: string[]): Game {
   const result = createGame([{ name: 'test deck', grid }], [{ robotSpeed: 6 }]);
   if (!result.ok) throw new Error(result.errors.join('\n'));
+  result.game.send({ type: 'start' });
   return result.game;
 }
 
