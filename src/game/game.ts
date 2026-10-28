@@ -1,6 +1,17 @@
 import { parseDeck, type Deck } from './deck';
+import {
+  createDrones,
+  dronePosition,
+  droneSnapshot,
+  isActive,
+  resetDrone,
+  updateDrone,
+  type Drone,
+} from './drone';
 import { createRobot, giveDirection, moveRobot, robotSnapshot, type Robot } from './robot';
 import {
+  DRONE_SPEED_CAP,
+  START_LIVES,
   TICKS_PER_SECOND,
   type Command,
   type CreateGameResult,
@@ -9,7 +20,16 @@ import {
   type GameEvent,
   type GameState,
   type LevelRow,
+  type Phase,
+  type TilePos,
 } from './types';
+
+/** Fallbacks for optional level table fields. Real values live in src/data/levels.ts. */
+const DEFAULT_DRONE_SPEED = 5;
+const DEFAULT_HUNTER_RELEASE_DELAY = 3;
+
+/** Caught when robot and an active drone are closer than this (overlap of more than half a tile). */
+const CATCH_DISTANCE = 0.5 - 1e-6;
 
 /**
  * Create a game from its decks (in cycle order) and the level table.
@@ -35,8 +55,13 @@ export function createGame(
 
 class Simulation implements Game {
   private level = 1;
+  private phase: Phase = 'playing';
+  private lives = START_LIVES;
   private deck: Deck;
   private robot: Robot;
+  private drones: Drone[];
+  /** Ticks since the deck started or since the robot was last caught. */
+  private elapsedTicks = 0;
   private lastEvents: GameEvent[] = [];
 
   constructor(
@@ -46,9 +71,11 @@ class Simulation implements Game {
   ) {
     this.deck = firstDeck;
     this.robot = createRobot(firstDeck.robotStart);
+    this.drones = createDrones(firstDeck);
   }
 
   send(command: Command): void {
+    if (this.phase === 'gameOver') return;
     switch (command.type) {
       case 'direction':
         giveDirection(this.robot, command.direction);
@@ -58,13 +85,13 @@ class Simulation implements Game {
 
   tick(ticks = 1): void {
     const events: GameEvent[] = [];
-    for (let i = 0; i < ticks; i++) this.step();
+    for (let i = 0; i < ticks; i++) this.step(events);
     this.lastEvents = events;
   }
 
   state(): GameState {
     return {
-      phase: 'playing',
+      phase: this.phase,
       level: this.level,
       deck: {
         name: this.deck.name,
@@ -73,6 +100,8 @@ class Simulation implements Game {
         walls: this.deck.walls,
       },
       robot: robotSnapshot(this.robot),
+      drones: this.drones.map(droneSnapshot),
+      lives: this.lives,
     };
   }
 
@@ -80,8 +109,58 @@ class Simulation implements Game {
     return this.lastEvents;
   }
 
-  private step(): void {
-    moveRobot(this.robot, this.deck, this.levelRow().robotSpeed / TICKS_PER_SECOND);
+  private step(events: GameEvent[]): void {
+    if (this.phase !== 'playing') return;
+    const row = this.levelRow();
+    this.elapsedTicks++;
+    const robotBefore = robotSnapshot(this.robot).position;
+    const dronesBefore = this.drones.map(dronePosition);
+    moveRobot(this.robot, this.deck, row.robotSpeed / TICKS_PER_SECOND);
+
+    const droneSpeed = Math.min(
+      row.droneSpeed ?? DEFAULT_DRONE_SPEED,
+      row.robotSpeed * DRONE_SPEED_CAP,
+    );
+    const ctx = {
+      deck: this.deck,
+      robotTile: robotSnapshot(this.robot).tile,
+      elapsedTicks: this.elapsedTicks,
+      hunterReleaseDelayTicks:
+        (row.hunterReleaseDelay ?? DEFAULT_HUNTER_RELEASE_DELAY) * TICKS_PER_SECOND,
+      distance: droneSpeed / TICKS_PER_SECOND,
+    };
+    for (const drone of this.drones) updateDrone(drone, ctx);
+
+    if (this.robotCaught(robotBefore, dronesBefore)) this.catchRobot(events);
+  }
+
+  /**
+   * Caught by an active drone that overlaps the robot by more than half a
+   * tile, or that swapped positions with it during this tick.
+   */
+  private robotCaught(robotBefore: TilePos, dronesBefore: readonly TilePos[]): boolean {
+    const robot = robotSnapshot(this.robot).position;
+    return this.drones.some((drone, i) => {
+      if (!isActive(drone)) return false;
+      const pos = dronePosition(drone);
+      if (Math.hypot(pos.x - robot.x, pos.y - robot.y) < CATCH_DISTANCE) return true;
+      const before = dronesBefore[i] ?? pos;
+      return swapped(robotBefore, robot, before, pos);
+    });
+  }
+
+  /** Lose a life; reset robot and drones to their start positions. Energy cells stay as they are. */
+  private catchRobot(events: GameEvent[]): void {
+    this.lives--;
+    events.push({ type: 'robotCaught' });
+    if (this.lives <= 0) {
+      this.phase = 'gameOver';
+      events.push({ type: 'gameOver' });
+      return;
+    }
+    this.robot = createRobot(this.deck.robotStart);
+    for (const drone of this.drones) resetDrone(drone);
+    this.elapsedTicks = 0;
   }
 
   private levelRow(): LevelRow {
@@ -90,4 +169,19 @@ class Simulation implements Game {
     if (row === undefined) throw new Error('level table is empty');
     return row;
   }
+}
+
+/** Robot and drone stayed on one row (or column) and passed through each other along it. */
+function swapped(robotFrom: TilePos, robotTo: TilePos, droneFrom: TilePos, droneTo: TilePos): boolean {
+  const same = (a: number, b: number, c: number, d: number) =>
+    Math.abs(a - b) < 1e-6 && Math.abs(a - c) < 1e-6 && Math.abs(a - d) < 1e-6;
+  const crossed = (r0: number, r1: number, d0: number, d1: number) =>
+    Math.sign(r0 - d0) * Math.sign(r1 - d1) < 0;
+  if (same(robotFrom.y, robotTo.y, droneFrom.y, droneTo.y)) {
+    return crossed(robotFrom.x, robotTo.x, droneFrom.x, droneTo.x);
+  }
+  if (same(robotFrom.x, robotTo.x, droneFrom.x, droneTo.x)) {
+    return crossed(robotFrom.y, robotTo.y, droneFrom.y, droneTo.y);
+  }
+  return false;
 }

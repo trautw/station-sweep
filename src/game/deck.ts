@@ -7,6 +7,10 @@ export interface Deck {
   readonly height: number;
   readonly walls: readonly (readonly boolean[])[];
   readonly robotStart: TilePos;
+  /** The drone bay `B`; null when the deck has none. */
+  readonly droneBay: TilePos | null;
+  /** Number of Hunters on this deck. */
+  readonly hunters: number;
 }
 
 export type ParseResult =
@@ -20,6 +24,7 @@ export type ParseResult =
 const WALL = '#';
 const CORRIDOR = ' ';
 const ROBOT_START = 'R';
+const DRONE_BAY = 'B';
 
 export function parseDeck(def: DeckDefinition): ParseResult {
   const errors: string[] = [];
@@ -27,6 +32,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
   const width = Math.max(0, ...def.grid.map((row) => row.length));
   const walls: boolean[][] = [];
   const robotStarts: TilePos[] = [];
+  const droneBays: TilePos[] = [];
 
   for (let y = 0; y < height; y++) {
     const row = def.grid[y] ?? '';
@@ -45,6 +51,10 @@ export function parseDeck(def: DeckDefinition): ParseResult {
           wallRow.push(false);
           robotStarts.push({ x, y });
           break;
+        case DRONE_BAY:
+          wallRow.push(false);
+          droneBays.push({ x, y });
+          break;
         default:
           wallRow.push(true);
           errors.push(`${def.name}: unknown grid character '${ch}' at (${x}, ${y})`);
@@ -55,9 +65,15 @@ export function parseDeck(def: DeckDefinition): ParseResult {
 
   const robotStart = robotStarts[0];
   if (robotStart === undefined) errors.push(`${def.name}: no robot start 'R'`);
+  const droneBay = droneBays[0] ?? null;
+  const hunters = def.drones?.hunters ?? 0;
+  if (hunters > 0 && droneBay === null) errors.push(`${def.name}: Hunters need a drone bay 'B'`);
   if (errors.length > 0 || robotStart === undefined) return { ok: false, errors };
 
-  return { ok: true, deck: { name: def.name, width, height, walls, robotStart } };
+  return {
+    ok: true,
+    deck: { name: def.name, width, height, walls, robotStart, droneBay, hunters },
+  };
 }
 
 export function isWall(deck: Deck, pos: TilePos): boolean {

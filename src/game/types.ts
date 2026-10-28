@@ -10,10 +10,20 @@ export interface TilePos {
   readonly y: number;
 }
 
-/** A deck as authored: a text grid (one string per row) plus, later, typed drone definitions. */
+/**
+ * The drones of one deck. Tickets 07/08 add `patrollers` (route waypoints)
+ * and `sentinels` (guarded area) here.
+ */
+export interface DeckDrones {
+  /** Number of Hunters; they wait in the drone bay `B` and are released one after another. */
+  readonly hunters?: number;
+}
+
+/** A deck as authored: a text grid (one string per row) plus typed drone definitions. */
 export interface DeckDefinition {
   readonly name: string;
   readonly grid: readonly string[];
+  readonly drones?: DeckDrones;
 }
 
 /**
@@ -24,13 +34,48 @@ export interface DeckDefinition {
 export interface LevelRow {
   /** Robot speed in tiles per second. */
   readonly robotSpeed: number;
+  /**
+   * Drone speed in tiles per second (default 5). Always capped below the
+   * robot speed (see DRONE_SPEED_CAP).
+   */
+  readonly droneSpeed?: number;
+  /** Seconds between Hunter releases from the drone bay (default 3). */
+  readonly hunterReleaseDelay?: number;
 }
+
+/** Lives at the start of a game. */
+export const START_LIVES = 3;
+
+/** Drone speed never exceeds this fraction of the robot speed. */
+export const DRONE_SPEED_CAP = 0.9;
 
 export type Command = { readonly type: 'direction'; readonly direction: Direction };
 
-export type GameEvent = never;
+export type GameEvent =
+  | { readonly type: 'robotCaught' }
+  | { readonly type: 'gameOver' };
 
-export type Phase = 'playing';
+export type Phase = 'playing' | 'gameOver';
+
+/** Tickets 07/08 add 'patroller' | 'sentinel'. */
+export type DroneType = 'hunter';
+
+/**
+ * What a drone is doing. 'waiting': in the drone bay, not active (cannot catch).
+ * 'hunting': heading for the robot by the shortest path. Later tickets add
+ * patrolling/chasing/guarding/returning and shutdown/salvaged.
+ */
+export type DroneMode = 'waiting' | 'hunting';
+
+export interface DroneState {
+  readonly type: DroneType;
+  readonly mode: DroneMode;
+  /** Smooth position in tile units; tile centres are at whole numbers. */
+  readonly position: TilePos;
+  /** The tile the drone is on (nearest tile centre). */
+  readonly tile: TilePos;
+  readonly direction: Direction;
+}
 
 export interface RobotState {
   /** Smooth position in tile units; tile centres are at whole numbers. */
@@ -56,6 +101,8 @@ export interface GameState {
   readonly level: number;
   readonly deck: DeckState;
   readonly robot: RobotState;
+  readonly drones: readonly DroneState[];
+  readonly lives: number;
 }
 
 export interface Game {
