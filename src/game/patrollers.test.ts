@@ -142,3 +142,28 @@ describe('Patrollers', () => {
     expect(visited.slice(0, 5)).toEqual(['6,1', '7,1', '8,1', '7,1', '6,1']);
   });
 });
+
+describe('Patroller validation', () => {
+  it('reports every waypoint that lies in a wall or off the deck', () => {
+    const result = createGame(
+      [
+        {
+          name: 'test deck',
+          grid: ['######', '#R  B#', '######'],
+          drones: {
+            patrollers: [
+              { route: [{ x: 2, y: 1 }, { x: 3, y: 1 }] },
+              { route: [{ x: 2, y: 1 }, { x: 2, y: 0 }, { x: 9, y: 1 }] },
+            ],
+          },
+        },
+      ],
+      LEVELS,
+    );
+    expect(result.ok).toBe(false);
+    expect(result.ok ? [] : result.errors).toEqual([
+      'test deck: Patroller 2 waypoint at (2, 0) lies in a wall',
+      'test deck: Patroller 2 waypoint at (9, 1) lies in a wall',
+    ]);
+  });
+});

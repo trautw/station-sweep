@@ -53,6 +53,8 @@ interface RawDeck {
   readonly energyCells: readonly TilePos[];
   /** Airlock tiles per digit, in row-major order. */
   readonly airlockTiles: ReadonlyMap<number, readonly TilePos[]>;
+  /** Waypoints of each Patroller, as authored. */
+  readonly patrolRoutes: readonly (readonly TilePos[])[];
 }
 
 /** A validation rule returns one message per problem it finds (empty when fine). */
@@ -63,6 +65,7 @@ const VALIDATION_RULES: readonly ValidationRule[] = [
   (deck) => exactlyOne(deck.droneBays, "drone bay 'B'"),
   (deck) => unpairedAirlocks(deck),
   (deck) => unreachableFromRobot(deck, deck.energyCells, 'energy cell'),
+  (deck) => waypointsInWalls(deck),
 ];
 
 export function parseDeck(def: DeckDefinition): ParseResult {
@@ -117,6 +120,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
     droneBays,
     energyCells,
     airlockTiles,
+    patrolRoutes: (def.drones?.patrollers ?? []).map((p) => p.route),
   };
   for (const rule of VALIDATION_RULES) errors.push(...rule(raw));
 
@@ -136,7 +140,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
       droneBay,
       energyCells,
       hunters: def.drones?.hunters ?? 0,
-      patrolRoutes: (def.drones?.patrollers ?? []).map((p) => p.route),
+      patrolRoutes: raw.patrolRoutes,
       airlocks: airlockPairs(airlockTiles),
     },
   };
@@ -175,6 +179,14 @@ function unpairedAirlocks(deck: RawDeck): string[] {
       ([digit, tiles]) =>
         `airlock '${digit}' must appear exactly twice: found ${tiles.length} at ${tiles.map(fmt).join(', ')}`,
     );
+}
+
+function waypointsInWalls(deck: RawDeck): string[] {
+  return deck.patrolRoutes.flatMap((route, i) =>
+    route
+      .filter((wp) => isWall(deck, wp))
+      .map((wp) => `Patroller ${i + 1} waypoint at ${fmt(wp)} lies in a wall`),
+  );
 }
 
 function exactlyOne(found: readonly TilePos[], what: string): string[] {
