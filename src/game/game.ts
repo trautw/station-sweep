@@ -106,6 +106,7 @@ class Simulation implements Game {
         width: this.deck.width,
         height: this.deck.height,
         walls: this.deck.walls,
+        airlocks: this.deck.airlocks,
       },
       robot: robotSnapshot(this.robot),
       drones: this.drones.map(droneSnapshot),
@@ -198,8 +199,12 @@ class Simulation implements Game {
   }
 }
 
-/** Robot and drone stayed on one row (or column) and passed through each other along it. */
+/**
+ * Robot and drone stayed on one row (or column) and passed through each other
+ * along it. An airlock jump (robot moved more than one tile) is not a swap.
+ */
 function swapped(robotFrom: TilePos, robotTo: TilePos, droneFrom: TilePos, droneTo: TilePos): boolean {
+  if (Math.hypot(robotTo.x - robotFrom.x, robotTo.y - robotFrom.y) > 1 + 1e-6) return false;
   const same = (a: number, b: number, c: number, d: number) =>
     Math.abs(a - b) < 1e-6 && Math.abs(a - c) < 1e-6 && Math.abs(a - d) < 1e-6;
   const crossed = (r0: number, r1: number, d0: number, d1: number) =>

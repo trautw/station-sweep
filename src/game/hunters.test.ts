@@ -161,6 +161,18 @@ describe('getting caught', () => {
     expect(game.state().robot.tile).toEqual({ x: 2, y: 0 });
   });
 
+  it('does not happen when the robot jumps through an airlock past a drone', () => {
+    // The robot enters airlock 1 at x=1 and comes out at x=10, beyond the Hunter.
+    const game = startGame(['#1R   B   1#'], 1, [
+      { robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 0 },
+    ]);
+    game.send({ type: 'direction', direction: 'left' });
+    game.tick(12);
+    expect(game.state().robot.position.x).toBeGreaterThan(9);
+    expect(game.state().drones[0]!.position.x).toBeLessThan(6);
+    expect(game.state().lives).toBe(3);
+  });
+
   it('never happens with a drone still waiting in the drone bay', () => {
     const game = startGame(['#R B#'], 1, [{ robotSpeed: 6, droneSpeed: 3, hunterReleaseDelay: 10 }]);
     game.send({ type: 'direction', direction: 'right' });

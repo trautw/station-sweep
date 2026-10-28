@@ -13,6 +13,19 @@ const COLORS = {
   energyCell: '#5dffc8',
 };
 
+/** One colour per airlock pair (by digit), so pairs can be told apart. */
+const AIRLOCK_COLORS = [
+  '#ff5ec4',
+  '#ff9f3f',
+  '#b48cff',
+  '#4fe0ff',
+  '#ff6b6b',
+  '#c6ff4f',
+  '#ffffff',
+  '#ffd0e8',
+  '#8fb8ff',
+];
+
 const FACING_ANGLE: Record<Direction, number> = {
   right: 0,
   down: Math.PI / 2,
@@ -63,6 +76,8 @@ export class Renderer {
         this.drawWallEdges(x, y, state);
       }
     }
+
+    this.drawAirlocks(state);
 
     // Energy cells: small glowing diamonds at tile centres.
     ctx.save();
@@ -151,6 +166,32 @@ export class Renderer {
     ctx.restore();
   }
 
+  /** Both airlocks of a pair look alike: same colour ring and the pair's digit. */
+  private drawAirlocks(state: GameState): void {
+    const { ctx, tileSize: t } = this;
+    ctx.save();
+    ctx.lineWidth = Math.max(1.5, t / 10);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${Math.round(t * 0.45)}px system-ui, sans-serif`;
+    for (const { digit, tiles } of state.deck.airlocks) {
+      const color = AIRLOCK_COLORS[(digit - 1) % AIRLOCK_COLORS.length] ?? '#ffffff';
+      for (const tile of tiles) {
+        const x = (tile.x + 0.5) * t;
+        const y = (tile.y + 0.5) * t;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = t / 3;
+        ctx.beginPath();
+        ctx.arc(x, y, t * 0.42, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillText(String(digit), x, y + t * 0.02);
+      }
+    }
+    ctx.restore();
+  }
 
   private drawWallEdges(x: number, y: number, state: GameState): void {
     const { ctx, tileSize: t } = this;

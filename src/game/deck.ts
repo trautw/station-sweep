@@ -1,5 +1,5 @@
 import { step } from './grid';
-import type { DeckDefinition, Direction, TilePos } from './types';
+import type { AirlockPair, DeckDefinition, Direction, TilePos } from './types';
 
 const DIRECTIONS: readonly Direction[] = ['up', 'down', 'left', 'right'];
 
@@ -15,6 +15,11 @@ export interface Deck {
   readonly hunters: number;
   /** Energy cell tiles in row-major order. */
   readonly energyCells: readonly TilePos[];
+  /**
+   * Linked airlock pairs, ordered by digit. Airlock tiles are plain corridor
+   * tiles in `walls`; only the robot uses the link (see `airlockPartner`).
+   */
+  readonly airlocks: readonly AirlockPair[];
 }
 
 export type ParseResult =
@@ -30,6 +35,7 @@ const CORRIDOR = ' ';
 const ROBOT_START = 'R';
 const DRONE_BAY = 'B';
 const ENERGY_CELL = '.';
+const AIRLOCK = /^[1-9]$/;
 
 /**
  * Everything the parser found in a grid, before validation. Positions are
@@ -43,6 +49,8 @@ interface RawDeck {
   readonly robotStarts: readonly TilePos[];
   readonly droneBays: readonly TilePos[];
   readonly energyCells: readonly TilePos[];
+  /** Airlock tiles per digit, in row-major order. */
+  readonly airlockTiles: ReadonlyMap<number, readonly TilePos[]>;
 }
 
 /** A validation rule returns one message per problem it finds (empty when fine). */
@@ -51,6 +59,7 @@ type ValidationRule = (deck: RawDeck) => string[];
 const VALIDATION_RULES: readonly ValidationRule[] = [
   (deck) => exactlyOne(deck.robotStarts, "robot start 'R'"),
   (deck) => exactlyOne(deck.droneBays, "drone bay 'B'"),
+  (deck) => unpairedAirlocks(deck),
   (deck) => unreachableFromRobot(deck, deck.energyCells, 'energy cell'),
 ];
 
@@ -62,6 +71,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
   const robotStarts: TilePos[] = [];
   const droneBays: TilePos[] = [];
   const energyCells: TilePos[] = [];
+  const airlockTiles = new Map<number, TilePos[]>();
 
   for (let y = 0; y < height; y++) {
     const row = def.grid[y] ?? '';
@@ -84,6 +94,11 @@ export function parseDeck(def: DeckDefinition): ParseResult {
           energyCells.push({ x, y });
           break;
         default:
+          if (AIRLOCK.test(ch)) {
+            const digit = Number(ch);
+            airlockTiles.set(digit, [...(airlockTiles.get(digit) ?? []), { x, y }]);
+            break;
+          }
           wallRow[x] = true;
           errors.push(`unknown grid character '${ch}' at ${fmt({ x, y })}`);
       }
@@ -91,7 +106,16 @@ export function parseDeck(def: DeckDefinition): ParseResult {
     walls.push(wallRow);
   }
 
-  const raw: RawDeck = { name: def.name, width, height, walls, robotStarts, droneBays, energyCells };
+  const raw: RawDeck = {
+    name: def.name,
+    width,
+    height,
+    walls,
+    robotStarts,
+    droneBays,
+    energyCells,
+    airlockTiles,
+  };
   for (const rule of VALIDATION_RULES) errors.push(...rule(raw));
 
   const robotStart = robotStarts[0];
@@ -110,8 +134,44 @@ export function parseDeck(def: DeckDefinition): ParseResult {
       droneBay,
       energyCells,
       hunters: def.drones?.hunters ?? 0,
+      airlocks: airlockPairs(airlockTiles),
     },
   };
+}
+
+/** Linked pairs; digits that don't appear exactly twice are left out (validation reports them). */
+function airlockPairs(airlockTiles: ReadonlyMap<number, readonly TilePos[]>): AirlockPair[] {
+  return [...airlockTiles.entries()]
+    .sort(([a], [b]) => a - b)
+    .flatMap(([digit, tiles]) => {
+      const [a, b] = tiles;
+      return tiles.length !== 2 || a === undefined || b === undefined
+        ? []
+        : [{ digit, tiles: [a, b] as const }];
+    });
+}
+
+/**
+ * The airlock tile linked to `tile`, or null when `tile` is no airlock.
+ * Only robot movement and the reachability check use this; drones treat
+ * airlock tiles as plain corridor.
+ */
+export function airlockPartner(deck: Pick<Deck, 'airlocks'>, tile: TilePos): TilePos | null {
+  for (const { tiles: [a, b] } of deck.airlocks) {
+    if (a.x === tile.x && a.y === tile.y) return b;
+    if (b.x === tile.x && b.y === tile.y) return a;
+  }
+  return null;
+}
+
+function unpairedAirlocks(deck: RawDeck): string[] {
+  return [...deck.airlockTiles.entries()]
+    .filter(([, tiles]) => tiles.length !== 2)
+    .sort(([a], [b]) => a - b)
+    .map(
+      ([digit, tiles]) =>
+        `airlock '${digit}' must appear exactly twice: found ${tiles.length} at ${tiles.map(fmt).join(', ')}`,
+    );
 }
 
 function exactlyOne(found: readonly TilePos[], what: string): string[] {
@@ -132,13 +192,16 @@ function unreachableFromRobot(deck: RawDeck, targets: readonly TilePos[], what: 
     .map((t) => `${what} at ${fmt(t)} is not reachable from the robot start`);
 }
 
-/** Flood fill over corridor tiles. Airlocks will add their paired tile as a neighbour. */
+/** Flood fill over corridor tiles; a paired airlock also leads to its partner. */
 function reachableTiles(deck: RawDeck, start: TilePos): Set<string> {
+  const airlocks = { airlocks: airlockPairs(deck.airlockTiles) };
   const seen = new Set([key(start)]);
   const queue = [start];
   for (let pos = queue.shift(); pos !== undefined; pos = queue.shift()) {
-    for (const dir of DIRECTIONS) {
-      const next = step(pos, dir);
+    const partner = airlockPartner(airlocks, pos);
+    const neighbours = DIRECTIONS.map((dir) => step(pos, dir));
+    if (partner !== null) neighbours.push(partner);
+    for (const next of neighbours) {
       if (isWall(deck, next) || seen.has(key(next))) continue;
       seen.add(key(next));
       queue.push(next);
