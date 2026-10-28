@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] 3–4 decks exist and run in the cycle in the browser
-- [ ] A test loads every real deck and finds zero validation errors
+- [x] 3–4 decks exist and run in the cycle in the browser
+- [x] A test loads every real deck and finds zero validation errors
 - [ ] Every deck has been played through by hand at least once and feels fair
