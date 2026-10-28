@@ -11,6 +11,7 @@ export interface Deck {
   readonly walls: readonly (readonly boolean[])[];
   readonly robotStart: TilePos;
   readonly droneBay: TilePos;
+  /** Energy cell tiles in row-major order. */
   readonly energyCells: readonly TilePos[];
 }
 

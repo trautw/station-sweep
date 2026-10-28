@@ -28,9 +28,11 @@ export interface LevelRow {
 
 export type Command = { readonly type: 'direction'; readonly direction: Direction };
 
-export type GameEvent = never;
+export type GameEvent =
+  | { readonly type: 'cellCollected'; readonly tile: TilePos }
+  | { readonly type: 'deckCleared' };
 
-export type Phase = 'playing';
+export type Phase = 'playing' | 'deckCleared';
 
 export interface RobotState {
   /** Smooth position in tile units; tile centres are at whole numbers. */
@@ -56,6 +58,9 @@ export interface GameState {
   readonly level: number;
   readonly deck: DeckState;
   readonly robot: RobotState;
+  /** Energy cells still lying on the deck, in row-major order. */
+  readonly energyCells: readonly TilePos[];
+  readonly score: number;
 }
 
 export interface Game {
