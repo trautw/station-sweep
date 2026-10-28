@@ -37,6 +37,8 @@ export interface Drone {
   direction: Direction;
   /** Ticks left in mode 'shutdown'. */
   shutdownTicks: number;
+  /** The EMP (numbered per deck) that caused the current shutdown; its salvage chain counts this drone. */
+  shutdownBy: number;
   /** The mode a shut-down drone goes back to when it wakes up. */
   resumeMode: DroneMode;
   /** Ticks left in mode 'salvaged' until the drone is rebuilt. */
@@ -70,6 +72,7 @@ export function createDrones(deck: Deck): Drone[] {
       offset: 0,
       direction: 'left',
       shutdownTicks: 0,
+      shutdownBy: 0,
       resumeMode: 'waiting',
       rebuildTicks: 0,
     });
@@ -86,6 +89,7 @@ export function createDrones(deck: Deck): Drone[] {
       offset: 0,
       direction: 'left',
       shutdownTicks: 0,
+      shutdownBy: 0,
       resumeMode: initialMode('sentinel'),
       rebuildTicks: 0,
     });
@@ -105,15 +109,17 @@ export function resetDrone(drone: Drone): void {
 }
 
 /**
- * EMP hit: an active drone stops for `ticks` ticks, then resumes what it was
- * doing. Hitting an already shut-down drone restarts its shutdown time.
+ * Hit by EMP number `emp`: an active drone stops for `ticks` ticks, then
+ * resumes what it was doing. Hitting an already shut-down drone restarts its
+ * shutdown time (and it now belongs to the newer EMP's salvage chain).
  * Drones waiting in the drone bay (to be released or rebuilt) are not affected.
  */
-export function shutDown(drone: Drone, ticks: number): void {
+export function shutDown(drone: Drone, ticks: number, emp: number): void {
   if (drone.mode === 'waiting' || drone.mode === 'salvaged') return;
   if (drone.mode !== 'shutdown') drone.resumeMode = drone.mode;
   drone.mode = 'shutdown';
   drone.shutdownTicks = ticks;
+  drone.shutdownBy = emp;
 }
 
 export function isShutDown(drone: Drone): boolean {

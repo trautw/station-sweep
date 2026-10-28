@@ -177,6 +177,45 @@ describe('salvaging', () => {
     expect(points).toEqual([250, 250]);
   });
 
+  it('counts a salvage in the chain of the EMP that shut the drone down, even after a later EMP', () => {
+    // Two Sentinels that stand still (one-tile guarded areas) at x=10 and x=14.
+    // EMP 1 at x=9 shuts down both; the robot salvages the first, backs off
+    // more than 5 tiles from the second, triggers EMP 2 (which misses it) and
+    // then salvages the second: still the second salvage of EMP 1.
+    const post = (x: number) => ({ start: { x, y: 0 }, area: { from: { x, y: 0 }, to: { x, y: 0 } } });
+    const game = startGame(
+      ['#REE' + ' '.repeat(16) + 'B#'],
+      { sentinels: [post(10), post(14)] },
+      [{ ...LEVELS[0]!, shutdownTime: 10, rebuildDelay: 30, sentinelTriggerDistance: 0 }],
+    );
+    const points: number[] = [];
+    const tickUntil = (done: () => boolean) => {
+      while (!done()) {
+        game.tick(1);
+        for (const e of game.events()) if (e.type === 'droneSalvaged') points.push(e.points);
+      }
+    };
+    const robotX = () => game.state().robot.tile.x;
+    const mode = (i: number) => game.state().drones[i]!.mode;
+
+    game.send({ type: 'direction', direction: 'right' });
+    tickUntil(() => robotX() === 9);
+    game.send({ type: 'triggerEmp' });
+    tickUntil(() => mode(0) === 'shutdown');
+    expect(mode(1)).toBe('shutdown');
+    tickUntil(() => mode(0) === 'salvaged');
+
+    game.send({ type: 'direction', direction: 'left' });
+    tickUntil(() => robotX() <= 8);
+    game.send({ type: 'triggerEmp' });
+    game.tick(1);
+    expect(game.events()).toContainEqual({ type: 'empTriggered' });
+
+    game.send({ type: 'direction', direction: 'right' });
+    tickUntil(() => mode(1) === 'salvaged');
+    expect(points).toEqual([250, 500]);
+  });
+
   it('sends a Hunter to the drone bay, where it is rebuilt after the delay and hunts again', () => {
     const game = shutDownHuntersNextToRobot(1);
     game.send({ type: 'direction', direction: 'right' });

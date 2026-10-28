@@ -93,8 +93,10 @@ class Simulation implements Game {
   private carriedEmpCharges = 0;
   /** An EMP trigger command waiting for the next tick. */
   private empTriggerPending = false;
-  /** Drones salvaged since the last EMP went off. */
-  private salvageChain = 0;
+  /** EMPs triggered on this deck; numbers each EMP so a shutdown knows which one caused it. */
+  private empsTriggered = 0;
+  /** Drones salvaged so far per EMP number: the salvage chain of each EMP. */
+  private salvageChains = new Map<number, number>();
   /** Ticks since the deck started or since the robot was last caught. */
   private elapsedTicks = 0;
   private lastEvents: GameEvent[] = [];
@@ -124,7 +126,8 @@ class Simulation implements Game {
     for (const cell of deck.energyCells) this.energyCells.set(tileKey(cell), cell);
     for (const charge of deck.empCharges) this.empCharges.set(tileKey(charge), charge);
     this.elapsedTicks = 0;
-    this.salvageChain = 0;
+    this.empsTriggered = 0;
+    this.salvageChains.clear();
     this.empTriggerPending = false;
   }
 
@@ -261,12 +264,12 @@ class Simulation implements Game {
     this.empTriggerPending = false;
     if (this.carriedEmpCharges === 0) return;
     this.carriedEmpCharges--;
-    this.salvageChain = 0;
+    const emp = ++this.empsTriggered;
     const robot = robotSnapshot(this.robot).tile;
     const ticks = Math.round((row.shutdownTime ?? DEFAULT_SHUTDOWN_TIME) * TICKS_PER_SECOND);
     for (const drone of this.drones) {
       const { tile } = droneSnapshot(drone);
-      if (Math.hypot(tile.x - robot.x, tile.y - robot.y) <= EMP_RADIUS + 1e-6) shutDown(drone, ticks);
+      if (Math.hypot(tile.x - robot.x, tile.y - robot.y) <= EMP_RADIUS + 1e-6) shutDown(drone, ticks, emp);
     }
     events.push({ type: 'empTriggered' });
   }
@@ -322,8 +325,9 @@ class Simulation implements Game {
     this.drones.forEach((drone, i) => {
       if (!isShutDown(drone) || !this.touches(drone, robotBefore, dronesBefore[i])) return;
       const { tile } = droneSnapshot(drone);
-      this.salvageChain++;
-      const points = POINTS_PER_SALVAGE * this.salvageChain;
+      const chain = (this.salvageChains.get(drone.shutdownBy) ?? 0) + 1;
+      this.salvageChains.set(drone.shutdownBy, chain);
+      const points = POINTS_PER_SALVAGE * chain;
       this.addScore(points, events);
       salvage(drone, this.deck.droneBay, ticks);
       events.push({ type: 'droneSalvaged', tile, points });

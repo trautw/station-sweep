@@ -24,6 +24,7 @@ export function createPatroller(route: readonly TilePos[]): Drone {
     offset: 0,
     direction: 'left',
     shutdownTicks: 0,
+    shutdownBy: 0,
     resumeMode: 'patrolling',
     rebuildTicks: 0,
     patrol: { route, target: 0 },
