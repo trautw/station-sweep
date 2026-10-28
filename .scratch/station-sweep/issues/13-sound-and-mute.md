@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Every listed event plays its own effect in the browser
-- [ ] The mute button works and shows its state
-- [ ] No audio errors appear in the console on mobile before the first tap
+- [x] Every listed event plays its own effect in the browser
+- [x] The mute button works and shows its state
+- [x] No audio errors appear in the console on mobile before the first tap

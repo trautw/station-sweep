@@ -2,6 +2,7 @@ import './style.css';
 import { levelTable } from './data/levels';
 import { decks } from './decks';
 import { createGame, MAX_CARRIED_EMP_CHARGES } from './game';
+import { Sound } from './audio/sound';
 import { attachKeyboard } from './input/keyboard';
 import { attachSwipe } from './input/swipe';
 import { startLoop } from './loop';
@@ -53,6 +54,21 @@ const pauseButton = button('\u23F8', togglePause, 'strip-button');
 pauseButton.id = 'pause-button';
 pauseButton.setAttribute('aria-label', 'Pause');
 document.querySelector('#strip-buttons')?.append(pauseButton);
+// Sound: starts on the first interaction; the 🔊 button mutes and unmutes.
+const sound = new Sound(window);
+const toggleMute = () => {
+  sound.toggleMute();
+  showMute();
+};
+const muteButton = button('', toggleMute, 'strip-button');
+muteButton.id = 'mute-button';
+const showMute = () => {
+  muteButton.textContent = sound.isMuted() ? '\u{1F507}' : '\u{1F50A}';
+  muteButton.setAttribute('aria-label', sound.isMuted() ? 'Unmute' : 'Mute');
+  muteButton.setAttribute('aria-pressed', String(sound.isMuted()));
+};
+showMute();
+document.querySelector('#strip-buttons')?.append(muteButton);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) send({ type: 'pause' });
 });
@@ -65,6 +81,7 @@ const screens = new Screens(deckArea, send);
 startLoop(
   (ticks) => {
     game.tick(ticks);
+    sound.play(game.events());
     if (game.events().some((e) => e.type === 'gameOver')) {
       newHighscore = highscore.submit(game.state().score);
     }
