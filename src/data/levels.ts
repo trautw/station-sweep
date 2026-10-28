@@ -5,5 +5,5 @@ import type { LevelRow } from '../game';
  * levels. Tune the game here, not in code.
  */
 export const levelTable: readonly LevelRow[] = [
-  { robotSpeed: 7, droneSpeed: 5, hunterReleaseDelay: 4 },
+  { robotSpeed: 7, droneSpeed: 5, hunterReleaseDelay: 4, shutdownTime: 5, rebuildDelay: 5 },
 ];

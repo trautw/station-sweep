@@ -11,7 +11,12 @@ const COLORS = {
   overlay: 'rgba(5, 7, 15, 0.7)',
   text: '#ff3b5c',
   energyCell: '#5dffc8',
+  empCharge: '#7fd4ff',
+  shutdown: '#6c7a99',
 };
+
+/** Flicker period (s) of a shut-down drone in its last second of shutdown. */
+const FLICKER_PERIOD = 0.125;
 
 /** One colour per airlock pair (by digit), so pairs can be told apart. */
 const AIRLOCK_COLORS = [
@@ -98,6 +103,8 @@ export class Renderer {
     }
     ctx.restore();
 
+    this.drawEmpCharges(state);
+
     for (const drone of state.drones) this.drawDrone(drone, state.robot.position);
 
     // Robot: rounded body with a "visor" pointing in its facing direction.
@@ -129,7 +136,47 @@ export class Renderer {
     }
   }
 
+  /** EMP charges: a pulsing ring with a lightning bolt. */
+  private drawEmpCharges(state: GameState): void {
+    const { ctx, tileSize: t } = this;
+    const pulse = 0.8 + 0.2 * Math.sin(performance.now() / 180);
+    ctx.save();
+    ctx.strokeStyle = COLORS.empCharge;
+    ctx.fillStyle = COLORS.empCharge;
+    ctx.shadowColor = COLORS.empCharge;
+    ctx.shadowBlur = t / 2;
+    ctx.lineWidth = Math.max(1.5, t / 12);
+    for (const charge of state.empCharges) {
+      const x = (charge.x + 0.5) * t;
+      const y = (charge.y + 0.5) * t;
+      ctx.beginPath();
+      ctx.arc(x, y, t * 0.3 * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+      const b = t * 0.18;
+      ctx.beginPath();
+      ctx.moveTo(x + b * 0.3, y - b);
+      ctx.lineTo(x - b * 0.5, y + b * 0.15);
+      ctx.lineTo(x, y + b * 0.15);
+      ctx.lineTo(x - b * 0.3, y + b);
+      ctx.lineTo(x + b * 0.5, y - b * 0.15);
+      ctx.lineTo(x, y - b * 0.15);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   private drawDrone(drone: DroneState, robot: { x: number; y: number }): void {
+    // Salvaged drones are being rebuilt inside the drone bay: not drawn.
+    if (drone.mode === 'salvaged') return;
+    // Shut-down drones flicker in their last second, so the player sees them waking up.
+    if (
+      drone.mode === 'shutdown' &&
+      drone.shutdownTimeLeft < 1 &&
+      Math.floor(drone.shutdownTimeLeft / FLICKER_PERIOD) % 2 === 0
+    ) {
+      return;
+    }
     switch (drone.type) {
       case 'hunter':
         this.drawHunter(drone, robot);
@@ -137,18 +184,23 @@ export class Renderer {
     }
   }
 
-  /** Hunter: red spiked diamond with an eye that tracks the robot; dim while waiting in the bay. */
+  /**
+   * Hunter: red spiked diamond with an eye that tracks the robot; dim while
+   * waiting in the bay, grey and unlit while shut down.
+   */
   private drawHunter(drone: DroneState, robot: { x: number; y: number }): void {
     const { ctx, tileSize: t } = this;
     const cx = (drone.position.x + 0.5) * t;
     const cy = (drone.position.y + 0.5) * t;
     const r = t * 0.45;
     ctx.save();
+    const shutdown = drone.mode === 'shutdown';
+    const color = shutdown ? COLORS.shutdown : COLORS.hunter;
     ctx.globalAlpha = drone.mode === 'waiting' ? 0.45 : 1;
     ctx.translate(cx, cy);
-    ctx.shadowColor = COLORS.hunter;
-    ctx.shadowBlur = drone.mode === 'waiting' ? 0 : t / 2;
-    ctx.fillStyle = COLORS.hunter;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = drone.mode === 'waiting' || shutdown ? 0 : t / 2;
+    ctx.fillStyle = color;
     ctx.beginPath();
     for (let i = 0; i < 8; i++) {
       const a = (i * Math.PI) / 4;

@@ -14,6 +14,11 @@ const DIRECTION_KEYS: Record<string, Direction> = {
 /** Turns keyboard events into game commands. Returns a function that detaches the listener. */
 export function attachKeyboard(target: Window, send: (command: Command) => void): () => void {
   const onKeyDown = (event: KeyboardEvent) => {
+    if (event.code === 'Space') {
+      event.preventDefault();
+      if (!event.repeat) send({ type: 'triggerEmp' });
+      return;
+    }
     const direction = DIRECTION_KEYS[event.code];
     if (direction === undefined) return;
     event.preventDefault();

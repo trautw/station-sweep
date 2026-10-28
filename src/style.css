@@ -55,7 +55,8 @@ body {
   display: block;
 }
 
-#top-strip {
+#top-strip,
+#bottom-strip {
   gap: 1.5em;
   font-family: ui-monospace, monospace;
   font-size: 18px;
