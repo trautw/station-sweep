@@ -6,5 +6,5 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tests: the robot entering an airlock leaves through its partner in the same direction; an unpaired digit produces a validation error; an energy cell reachable only through an airlock counts as reachable
-- [ ] Airlock pairs are visible and can be told apart in the browser
+- [x] Tests: the robot entering an airlock leaves through its partner in the same direction; an unpaired digit produces a validation error; an energy cell reachable only through an airlock counts as reachable
+- [x] Airlock pairs are visible and can be told apart in the browser
