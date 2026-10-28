@@ -19,6 +19,7 @@ function oneCellDeck(name: string, drones: DeckDefinition['drones'] = {}): DeckD
 function startGame(decks: DeckDefinition[], levels: LevelRow[] = LEVELS): Game {
   const result = createGame(decks, levels);
   if (!result.ok) throw new Error(result.errors.join('\n'));
+  result.game.send({ type: 'start' });
   return result.game;
 }
 

@@ -13,8 +13,6 @@ const COLORS = {
   patrollerEye: '#eeeaff',
   sentinel: '#ffa630',
   sentinelCore: '#2a1500',
-  overlay: 'rgba(5, 7, 15, 0.7)',
-  text: '#ff3b5c',
   energyCell: '#5dffc8',
   empCharge: '#7fd4ff',
   shutdown: '#6c7a99',
@@ -130,15 +128,7 @@ export class Renderer {
     ctx.fillRect(r * 0.2, -r * 0.5, r * 0.5, r);
     ctx.restore();
 
-    if (state.phase === 'gameOver') {
-      ctx.fillStyle = COLORS.overlay;
-      ctx.fillRect(0, 0, deck.width * t, deck.height * t);
-      ctx.fillStyle = COLORS.text;
-      ctx.font = `bold ${Math.round(t * 1.4)}px system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('GAME OVER', (deck.width * t) / 2, (deck.height * t) / 2);
-    }
+    // Title, pause, deck cleared and game over screens are HTML overlays (src/ui/screens.ts).
   }
 
   /** EMP charges: a pulsing ring with a lightning bolt. */

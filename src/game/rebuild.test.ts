@@ -12,6 +12,7 @@ const REBUILD_TICKS = 300;
 function startGame(grid: string[], drones: DeckDrones, levels: LevelRow[] = LEVELS): Game {
   const result = createGame([{ name: 'test deck', grid, drones }], levels);
   if (!result.ok) throw new Error(result.errors.join('\n'));
+  result.game.send({ type: 'start' });
   return result.game;
 }
 

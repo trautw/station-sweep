@@ -74,7 +74,9 @@ export function createGame(
 
 class Simulation implements Game {
   private level = 1;
-  private phase: Phase = 'playing';
+  private phase: Phase = 'title';
+  /** The phase a 'paused' game goes back to on resume. */
+  private pausedPhase: 'playing' | 'deckCleared' = 'playing';
   private score = 0;
   private lives = START_LIVES;
   /** Index of the current deck in the cycle. */
@@ -126,6 +128,19 @@ class Simulation implements Game {
     this.empTriggerPending = false;
   }
 
+  /** Back to the start of the game: first deck, level 1, full lives, no score or charges. */
+  private newRun(): void {
+    const first = this.decks[0];
+    if (first === undefined) throw new Error('no decks');
+    this.level = 1;
+    this.score = 0;
+    this.lives = START_LIVES;
+    this.carriedEmpCharges = 0;
+    this.deckIndex = 0;
+    this.loadDeck(first);
+    this.phase = 'playing';
+  }
+
   /** The next deck of the cycle; after the last deck the first comes back one level higher. */
   private startNextDeck(events: GameEvent[]): void {
     this.deckIndex++;
@@ -141,7 +156,24 @@ class Simulation implements Game {
   }
 
   send(command: Command): void {
-    if (this.phase === 'gameOver') return;
+    switch (command.type) {
+      case 'start':
+        if (this.phase === 'title') this.phase = 'playing';
+        return;
+      case 'pause':
+        if (this.phase === 'playing' || this.phase === 'deckCleared') {
+          this.pausedPhase = this.phase;
+          this.phase = 'paused';
+        }
+        return;
+      case 'resume':
+        if (this.phase === 'paused') this.phase = this.pausedPhase;
+        return;
+      case 'playAgain':
+        if (this.phase === 'gameOver') this.newRun();
+        return;
+    }
+    if (this.phase !== 'playing' && this.phase !== 'deckCleared') return;
     switch (command.type) {
       case 'direction':
         giveDirection(this.robot, command.direction);

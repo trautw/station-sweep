@@ -10,6 +10,7 @@ const DRONE_TICKS_PER_TILE = 20;
 function startGame(grid: string[], hunters: number, levels: LevelRow[] = LEVELS): Game {
   const result = createGame([{ name: 'test deck', grid, drones: { hunters } }], levels);
   if (!result.ok) throw new Error(result.errors.join('\n'));
+  result.game.send({ type: 'start' });
   return result.game;
 }
 

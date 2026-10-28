@@ -23,6 +23,7 @@ function startGame(
 ): Game {
   const result = createGame([{ name: 'test deck', grid, drones: { sentinels } }], levelTable);
   if (!result.ok) throw new Error(result.errors.join('\n'));
+  result.game.send({ type: 'start' });
   return result.game;
 }
 

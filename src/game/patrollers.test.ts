@@ -12,6 +12,7 @@ function startGame(grid: string[], routes: (readonly [TilePos, ...TilePos[]])[])
     LEVELS,
   );
   if (!result.ok) throw new Error(result.errors.join('\n'));
+  result.game.send({ type: 'start' });
   return result.game;
 }
 

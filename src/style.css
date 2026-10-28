@@ -43,6 +43,7 @@ body {
 }
 
 #deck-area {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -61,4 +62,124 @@ body {
   font-family: ui-monospace, monospace;
   font-size: 18px;
   letter-spacing: 0.08em;
+}
+
+/* Strip buttons (⏸, later 🔊): big enough to tap. */
+#strip-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.strip-button {
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid #2c4a7a;
+  border-radius: 8px;
+  background: #0d1530;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Phase screens: HTML overlays over the deck (src/ui/screens.ts). */
+.screens {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  box-sizing: border-box;
+  text-align: center;
+  background: rgba(5, 7, 15, 0.72);
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.08em;
+}
+
+.screen.visible {
+  display: flex;
+}
+
+/* Only screens with a button take taps; "Deck cleared" lets the deck show through. */
+.screen:has(button) {
+  pointer-events: auto;
+}
+
+#cleared-screen {
+  background: rgba(5, 7, 15, 0.35);
+}
+
+.screen h1,
+.screen h2,
+.screen p {
+  margin: 0;
+}
+
+.game-name {
+  font-size: clamp(28px, 9vw, 48px);
+  color: #5dffc8;
+  text-shadow: 0 0 12px #5dffc8;
+}
+
+.screen h2 {
+  font-size: clamp(24px, 7vw, 36px);
+  color: #7fd4ff;
+  text-shadow: 0 0 10px #7fd4ff;
+}
+
+.screen h2.game-over {
+  color: #ff3b5c;
+  text-shadow: 0 0 10px #ff3b5c;
+}
+
+.tagline,
+.hint {
+  font-size: 14px;
+  opacity: 0.75;
+  white-space: normal;
+}
+
+.screen-highscore,
+.final-score {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.new-highscore {
+  font-size: 20px;
+  color: #ffd84d;
+  text-shadow: 0 0 8px #ffd84d;
+}
+
+.screen-button {
+  min-width: 160px;
+  min-height: 48px;
+  padding: 0 24px;
+  border: 2px solid #5dffc8;
+  border-radius: 10px;
+  background: #0d1f2a;
+  color: #5dffc8;
+  font: inherit;
+  font-size: 20px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+/* Narrow phones: the top strip has four items (score, highscore, level, lives). */
+@media (max-width: 440px) {
+  #top-strip {
+    gap: 0.6em;
+    font-size: clamp(11px, 3.6vw, 16px);
+    letter-spacing: 0.02em;
+  }
 }

@@ -96,7 +96,15 @@ export const DRONE_SPEED_CAP = 0.9;
 export type Command =
   | { readonly type: 'direction'; readonly direction: Direction }
   /** Use up one carried EMP charge (Space / double tap). Does nothing without a charge. */
-  | { readonly type: 'triggerEmp' };
+  | { readonly type: 'triggerEmp' }
+  /** Leave the title screen: play starts on the first deck. Only accepted in 'title'. */
+  | { readonly type: 'start' }
+  /** Pause a running game ('playing' or 'deckCleared'); ignored otherwise. */
+  | { readonly type: 'pause' }
+  /** Continue a paused game in the phase it was paused in; ignored unless 'paused'. */
+  | { readonly type: 'resume' }
+  /** After game over: a fresh run on the first deck at level 1. Only accepted in 'gameOver'. */
+  | { readonly type: 'playAgain' };
 
 /** An EMP shuts down every drone whose tile centre is at most this many tiles from the robot's. */
 export const EMP_RADIUS = 5;
@@ -116,7 +124,13 @@ export type GameEvent =
   | { readonly type: 'robotCaught' }
   | { readonly type: 'gameOver' };
 
-export type Phase = 'playing' | 'deckCleared' | 'gameOver';
+/**
+ * 'title': a new game waits for `start`; nothing moves.
+ * 'playing' / 'deckCleared': the game runs.
+ * 'paused': frozen; ticks, directions and EMP triggers change nothing until `resume`.
+ * 'gameOver': no lives left.
+ */
+export type Phase = 'title' | 'playing' | 'paused' | 'deckCleared' | 'gameOver';
 
 export type DroneType =
   | 'hunter'
