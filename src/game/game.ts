@@ -235,7 +235,7 @@ class Simulation implements Game {
     if (this.empTriggerPending) this.triggerEmp(row, events);
     const robotBefore = robotSnapshot(this.robot).position;
     const dronesBefore = this.drones.map(dronePosition);
-    moveRobot(this.robot, this.deck, row.robotSpeed / TICKS_PER_SECOND);
+    const robotJumped = moveRobot(this.robot, this.deck, row.robotSpeed / TICKS_PER_SECOND);
     this.pickUpEmpCharge(events);
     this.collectEnergyCell(events);
     if (this.phase !== 'playing') return;
@@ -255,8 +255,10 @@ class Simulation implements Game {
     };
     for (const drone of this.drones) updateDrone(drone, ctx);
 
-    this.salvageDrones(row, robotBefore, dronesBefore, events);
-    if (this.robotCaught(robotBefore, dronesBefore)) this.catchRobot(events);
+    // An airlock jump is no swap: before the jump is not where the robot came from.
+    const robotFrom = robotJumped ? null : robotBefore;
+    this.salvageDrones(row, robotFrom, dronesBefore, events);
+    if (this.robotCaught(robotFrom, dronesBefore)) this.catchRobot(events);
   }
 
   /** Use up one carried charge and shut down every drone within EMP_RADIUS of the robot. */
@@ -317,7 +319,7 @@ class Simulation implements Game {
   /** Salvage every shut-down drone the robot runs into (same overlap rule as being caught). */
   private salvageDrones(
     row: LevelRow,
-    robotBefore: TilePos,
+    robotBefore: TilePos | null,
     dronesBefore: readonly TilePos[],
     events: GameEvent[],
   ): void {
@@ -338,18 +340,21 @@ class Simulation implements Game {
    * Caught by an active drone that overlaps the robot by more than half a
    * tile, or that swapped positions with it during this tick.
    */
-  private robotCaught(robotBefore: TilePos, dronesBefore: readonly TilePos[]): boolean {
+  private robotCaught(robotBefore: TilePos | null, dronesBefore: readonly TilePos[]): boolean {
     return this.drones.some(
       (drone, i) => isActive(drone) && this.touches(drone, robotBefore, dronesBefore[i]),
     );
   }
 
-  /** The robot overlaps `drone` by more than half a tile, or they swapped positions this tick. */
-  private touches(drone: Drone, robotBefore: TilePos, droneBefore: TilePos | undefined): boolean {
+  /**
+   * The robot overlaps `drone` by more than half a tile, or they swapped
+   * positions this tick. `robotBefore` is null after an airlock jump.
+   */
+  private touches(drone: Drone, robotBefore: TilePos | null, droneBefore: TilePos | undefined): boolean {
     const robot = robotSnapshot(this.robot).position;
     const pos = dronePosition(drone);
     if (Math.hypot(pos.x - robot.x, pos.y - robot.y) < CATCH_DISTANCE) return true;
-    return swapped(robotBefore, robot, droneBefore ?? pos, pos);
+    return robotBefore !== null && swapped(robotBefore, robot, droneBefore ?? pos, pos);
   }
 
   /** Lose a life; reset robot and drones to their start positions. Energy cells stay as they are. */
@@ -375,20 +380,16 @@ class Simulation implements Game {
 }
 
 /**
- * Robot and drone stayed on one row (or column) and passed through each other
- * along it. An airlock jump (robot moved more than one tile) is not a swap.
+ * Robot and drone passed through each other during the tick, along a row,
+ * a column or around a junction: the drone's position relative to the robot
+ * flipped to the other side, and on the way (moving in a straight line from
+ * the tick's start to its end) the two came closer than half a tile.
  */
 function swapped(robotFrom: TilePos, robotTo: TilePos, droneFrom: TilePos, droneTo: TilePos): boolean {
-  if (Math.hypot(robotTo.x - robotFrom.x, robotTo.y - robotFrom.y) > 1 + 1e-6) return false;
-  const same = (a: number, b: number, c: number, d: number) =>
-    Math.abs(a - b) < 1e-6 && Math.abs(a - c) < 1e-6 && Math.abs(a - d) < 1e-6;
-  const crossed = (r0: number, r1: number, d0: number, d1: number) =>
-    Math.sign(r0 - d0) * Math.sign(r1 - d1) < 0;
-  if (same(robotFrom.y, robotTo.y, droneFrom.y, droneTo.y)) {
-    return crossed(robotFrom.x, robotTo.x, droneFrom.x, droneTo.x);
-  }
-  if (same(robotFrom.x, robotTo.x, droneFrom.x, droneTo.x)) {
-    return crossed(robotFrom.y, robotTo.y, droneFrom.y, droneTo.y);
-  }
-  return false;
+  const from = { x: robotFrom.x - droneFrom.x, y: robotFrom.y - droneFrom.y };
+  const to = { x: robotTo.x - droneTo.x, y: robotTo.y - droneTo.y };
+  if (from.x * to.x + from.y * to.y >= 0) return false;
+  const d = { x: to.x - from.x, y: to.y - from.y };
+  const t = Math.min(1, Math.max(0, -(from.x * d.x + from.y * d.y) / (d.x * d.x + d.y * d.y)));
+  return Math.hypot(from.x + t * d.x, from.y + t * d.y) < CATCH_DISTANCE;
 }

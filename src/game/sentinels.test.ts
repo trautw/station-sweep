@@ -152,3 +152,30 @@ describe('Sentinel validation', () => {
     ]);
   });
 });
+
+describe('catching around a corner', () => {
+  it('happens when the robot and a Sentinel swap positions while the Sentinel turns at a junction', () => {
+    // The Sentinel guards the L-shaped corner (2,1)-(3,3) and only chases on
+    // its own tile. Robot 0.8 tiles per tick, Sentinel 0.72. In the third tick
+    // the robot drives right from x=2.6 to x=3.4 while the Sentinel comes up
+    // the column from y=1.56, turns left at (3,1) and ends at x=2.84: they pass
+    // through each other although both tick ends are more than half a tile apart.
+    const grid = ['#########', '#R      #', '### #####', '### #####', '### #####', '###  B###', '#########'];
+    const corner: SentinelDefinition = {
+      start: { x: 3, y: 3 },
+      area: { from: { x: 2, y: 1 }, to: { x: 3, y: 3 } },
+    };
+    const game = startGame(grid, [corner], [
+      { robotSpeed: 48, droneSpeed: 43.2, sentinelTriggerDistance: 0 },
+    ]);
+    game.send({ type: 'direction', direction: 'right' });
+    game.tick(2);
+    expect(game.state().robot.position.x).toBeCloseTo(2.6);
+    expect(sentinel(game).position.y).toBeCloseTo(1.56);
+    expect(game.state().lives).toBe(3);
+
+    game.tick(1);
+    expect(game.events()).toEqual([{ type: 'robotCaught' }]);
+    expect(game.state().lives).toBe(2);
+  });
+});

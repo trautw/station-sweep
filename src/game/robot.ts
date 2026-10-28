@@ -35,8 +35,9 @@ export function giveDirection(robot: Robot, dir: Direction): void {
   robot.bufferedTurn = dir;
 }
 
-/** Move the robot by `distance` tiles along corridors. */
-export function moveRobot(robot: Robot, deck: Deck, distance: number): void {
+/** Move the robot by `distance` tiles along corridors. Returns true if it jumped through an airlock. */
+export function moveRobot(robot: Robot, deck: Deck, distance: number): boolean {
+  let jumped = false;
   let remaining = distance;
   while (remaining > EPSILON) {
     if (robot.offset === 0) {
@@ -50,7 +51,7 @@ export function moveRobot(robot: Robot, deck: Deck, distance: number): void {
       // A stopped robot stays put until it gets a direction it can take.
       if (!robot.moving || isWall(deck, step(robot.tile, robot.direction))) {
         robot.moving = false;
-        return;
+        return jumped;
       }
     }
     const advance = Math.min(remaining, 1 - robot.offset);
@@ -60,9 +61,14 @@ export function moveRobot(robot: Robot, deck: Deck, distance: number): void {
       robot.tile = step(robot.tile, robot.direction);
       robot.offset = 0;
       // Entering an airlock: leave through its partner, keeping the direction.
-      robot.tile = airlockPartner(deck, robot.tile) ?? robot.tile;
+      const partner = airlockPartner(deck, robot.tile);
+      if (partner !== null) {
+        robot.tile = partner;
+        jumped = true;
+      }
     }
   }
+  return jumped;
 }
 
 export function robotSnapshot(robot: Robot): RobotState {
