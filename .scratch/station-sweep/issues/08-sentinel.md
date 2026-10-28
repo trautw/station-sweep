@@ -6,5 +6,5 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tests: a Sentinel stays in its guarded area while the robot is far away; it chases once the robot is within the trigger distance; it returns to its area once the robot is out of range; an invalid guarded area produces a validation error
-- [ ] Sentinels have their own recognisable look
+- [x] Tests: a Sentinel stays in its guarded area while the robot is far away; it chases once the robot is within the trigger distance; it returns to its area once the robot is out of range; an invalid guarded area produces a validation error
+- [x] Sentinels have their own recognisable look
