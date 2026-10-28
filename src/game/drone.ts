@@ -1,6 +1,7 @@
 import { isWall, type Deck } from './deck';
 import { delta, step } from './grid';
 import { nextStepTowards } from './path';
+import { createPatroller, resetPatrol, updatePatroller, type Patrol } from './patroller';
 import type { Direction, DroneMode, DroneState, DroneType, TilePos } from './types';
 
 const EPSILON = 1e-6;
@@ -13,13 +14,15 @@ const EPSILON = 1e-6;
 export interface Drone {
   readonly type: DroneType;
   mode: DroneMode;
-  /** Where the drone (re)starts: the drone bay for Hunters. */
+  /** Where the drone (re)starts: the drone bay for Hunters, the first waypoint for Patrollers. */
   readonly start: TilePos;
   /** Hunters only: 0 = released first, 1 = second, ... */
   readonly releaseIndex: number;
   tile: TilePos;
   offset: number;
   direction: Direction;
+  /** Patrollers only: route and the waypoint being flown to. */
+  readonly patrol?: Patrol;
 }
 
 /** What a drone may look at during one tick. */
@@ -46,6 +49,7 @@ export function createDrones(deck: Deck): Drone[] {
       direction: 'left',
     });
   }
+  drones.push(...deck.patrolRoutes.map(createPatroller));
   return drones;
 }
 
@@ -55,12 +59,15 @@ export function resetDrone(drone: Drone): void {
   drone.offset = 0;
   drone.direction = 'left';
   drone.mode = initialMode(drone.type);
+  if (drone.patrol) resetPatrol(drone.patrol);
 }
 
 function initialMode(type: DroneType): DroneMode {
   switch (type) {
     case 'hunter':
       return 'waiting';
+    case 'patroller':
+      return 'patrolling';
   }
 }
 
@@ -70,6 +77,7 @@ export function isActive(drone: Drone): boolean {
 }
 
 export function updateDrone(drone: Drone, ctx: DroneContext): void {
+  if (drone.type === 'patroller') return updatePatroller(drone, ctx);
   switch (drone.mode) {
     case 'waiting':
       if (ctx.elapsedTicks >= (drone.releaseIndex + 1) * ctx.hunterReleaseDelayTicks) {
@@ -87,7 +95,7 @@ export function updateDrone(drone: Drone, ctx: DroneContext): void {
  * Move `ctx.distance` tiles. At each tile centre `choose` picks the next
  * direction; null means stay on this tile for the rest of the tick.
  */
-function moveDrone(drone: Drone, ctx: DroneContext, choose: () => Direction | null): void {
+export function moveDrone(drone: Drone, ctx: DroneContext, choose: () => Direction | null): void {
   let remaining = ctx.distance;
   while (remaining > EPSILON) {
     if (drone.offset === 0) {

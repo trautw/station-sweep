@@ -17,6 +17,16 @@ export interface TilePos {
 export interface DeckDrones {
   /** Number of Hunters; they wait in the drone bay `B` and are released one after another. */
   readonly hunters?: number;
+  /** Patrollers, each flying its route of waypoints in a loop. */
+  readonly patrollers?: readonly PatrollerDefinition[];
+}
+
+/**
+ * A Patroller starts at the first waypoint and flies to each waypoint in turn
+ * (shortest path between them), back to the first and round again.
+ */
+export interface PatrollerDefinition {
+  readonly route: readonly [TilePos, ...TilePos[]];
 }
 
 /** A deck as authored: a text grid (one string per row) plus typed drone definitions. */
@@ -59,15 +69,23 @@ export type GameEvent =
 
 export type Phase = 'playing' | 'deckCleared' | 'gameOver';
 
-/** Tickets 07/08 add 'patroller' | 'sentinel'. */
-export type DroneType = 'hunter';
+/** Ticket 08 adds 'sentinel'. */
+export type DroneType =
+  | 'hunter'
+  | 'patroller';
 
 /**
  * What a drone is doing. 'waiting': in the drone bay, not active (cannot catch).
  * 'hunting': heading for the robot by the shortest path. Later tickets add
  * patrolling/chasing/guarding/returning and shutdown/salvaged.
  */
-export type DroneMode = 'waiting' | 'hunting';
+export type DroneMode =
+  | 'waiting'
+  | 'hunting'
+  // Patroller: flying its route / chasing while in line of sight / flying back to its route.
+  | 'patrolling'
+  | 'chasing'
+  | 'returning';
 
 export interface DroneState {
   readonly type: DroneType;

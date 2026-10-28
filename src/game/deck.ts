@@ -13,6 +13,8 @@ export interface Deck {
   readonly droneBay: TilePos;
   /** Number of Hunters on this deck; they wait in the drone bay. */
   readonly hunters: number;
+  /** One route (list of waypoints, at least one) per Patroller. */
+  readonly patrolRoutes: readonly (readonly TilePos[])[];
   /** Energy cell tiles in row-major order. */
   readonly energyCells: readonly TilePos[];
   /**
@@ -134,6 +136,7 @@ export function parseDeck(def: DeckDefinition): ParseResult {
       droneBay,
       energyCells,
       hunters: def.drones?.hunters ?? 0,
+      patrolRoutes: (def.drones?.patrollers ?? []).map((p) => p.route),
       airlocks: airlockPairs(airlockTiles),
     },
   };
