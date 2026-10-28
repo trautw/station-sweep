@@ -4,7 +4,7 @@
 
 **Blocked by:** 05, 10, 11
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 - [x] 3–4 decks exist and run in the cycle in the browser
 - [x] A test loads every real deck and finds zero validation errors

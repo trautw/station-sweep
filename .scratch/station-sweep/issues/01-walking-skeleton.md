@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `npm run dev` shows a deck with walls and the robot, and the robot can be steered with the arrow keys and WASD
 - [x] `npm test` runs Vitest tests against the game logic interface only

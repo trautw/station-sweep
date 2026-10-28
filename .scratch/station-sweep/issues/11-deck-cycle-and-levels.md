@@ -4,6 +4,6 @@
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tests: clearing a deck moves to the next deck; after the last deck, the level goes up and the first deck comes back; values are taken from the level table, with the last row used beyond its end; drone speed never reaches the robot's speed; the deck bonus counts carried charges; charges carry over; an extra life is awarded at 5,000 and 10,000 points

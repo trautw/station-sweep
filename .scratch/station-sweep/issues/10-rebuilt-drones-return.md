@@ -4,6 +4,6 @@
 
 **Blocked by:** 07, 08, 09
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tests: a rebuilt Patroller returns to its route and patrols again; a rebuilt Sentinel returns to its guarded area; a returning drone catches the robot as normal

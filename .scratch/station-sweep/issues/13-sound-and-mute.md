@@ -4,7 +4,7 @@
 
 **Blocked by:** 09, 12
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Every listed event plays its own effect in the browser
 - [x] The mute button works and shows its state

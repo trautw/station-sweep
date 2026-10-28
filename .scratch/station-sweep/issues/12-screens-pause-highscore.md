@@ -9,7 +9,7 @@
 
 **Blocked by:** 11
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tests: the start and play-again commands produce the right phases; while paused, ticks change nothing; resuming continues the game
 - [x] In the browser, every screen works with both keyboard and touch; switching tabs pauses the game; the highscore survives a reload; the game runs without errors when storage is blocked

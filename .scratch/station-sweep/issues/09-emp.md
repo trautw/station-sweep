@@ -4,7 +4,7 @@
 
 **Blocked by:** 02, 06
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tests: picking up a charge; at most 2 carried and a third stays on the deck; triggering with no charges does nothing; only drones within the radius are shut down; a shut-down drone stands still and can't catch the robot; it wakes up after the shutdown time; the salvage chain scores 250, 500, 750; a salvaged Hunter is rebuilt in the drone bay after the delay and hunts again
 - [ ] Space and double tap trigger an EMP; shut-down drones flicker in their last second; the bottom strip shows the charges

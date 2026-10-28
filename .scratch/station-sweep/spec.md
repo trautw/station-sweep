@@ -1,6 +1,6 @@
 # Spec: Station Sweep
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Problem Statement
 

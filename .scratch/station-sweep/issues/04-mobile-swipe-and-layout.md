@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] One swipe sends exactly one turn command; the input layer only sends commands and never changes the state directly
 - [x] The deck fills the width of a phone in portrait format, stays sharp on high-DPI screens, and the page doesn't scroll

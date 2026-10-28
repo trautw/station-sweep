@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Energy cells are drawn and disappear when collected
 - [x] The score in the top strip goes up by 10 for each energy cell
