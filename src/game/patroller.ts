@@ -1,4 +1,5 @@
-import { moveDrone, type Drone, type DroneContext } from './drone';
+import { isWall, type Deck } from './deck';
+import { droneSnapshot, moveDrone, type Drone, type DroneContext } from './drone';
 import { nextStepTowards } from './path';
 import type { TilePos } from './types';
 
@@ -32,7 +33,10 @@ export function resetPatrol(patrol: Patrol): void {
 export function updatePatroller(drone: Drone, ctx: DroneContext): void {
   const patrol = drone.patrol;
   if (patrol === undefined) return;
+  // Line of sight is checked every tick; the direction still only changes at tile centres.
+  if (hasLineOfSight(ctx.deck, droneSnapshot(drone).tile, ctx.robotTile)) drone.mode = 'chasing';
   moveDrone(drone, ctx, () => {
+    if (drone.mode === 'chasing') return nextStepTowards(ctx.deck, drone.tile, ctx.robotTile);
     if (same(drone.tile, waypoint(patrol))) {
       patrol.target = (patrol.target + 1) % patrol.route.length;
     }
@@ -44,4 +48,15 @@ function waypoint(patrol: Patrol): TilePos {
   const wp = patrol.route[patrol.target];
   if (wp === undefined) throw new Error('Patroller waypoint index out of range');
   return wp;
+}
+
+/** Same row or column, and no wall tile between the two. Airlock tiles are corridor. */
+function hasLineOfSight(deck: Deck, from: TilePos, to: TilePos): boolean {
+  if (from.x !== to.x && from.y !== to.y) return false;
+  const dx = Math.sign(to.x - from.x);
+  const dy = Math.sign(to.y - from.y);
+  for (let x = from.x + dx, y = from.y + dy; x !== to.x || y !== to.y; x += dx, y += dy) {
+    if (isWall(deck, { x, y })) return false;
+  }
+  return true;
 }
