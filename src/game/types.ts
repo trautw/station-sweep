@@ -108,7 +108,7 @@ export type Command =
   | { readonly type: 'playAgain' };
 
 export type GameEvent =
-  | { readonly type: 'cellCollected'; readonly tile: TilePos }
+  | { readonly type: 'energyCellCollected'; readonly tile: TilePos }
   | { readonly type: 'empPickedUp'; readonly tile: TilePos }
   | { readonly type: 'empTriggered' }
   /** `points` = 250 x the drone's position in the salvage chain of the current EMP. */
@@ -136,12 +136,12 @@ export type DroneType =
   | 'sentinel';
 
 /**
- * What a drone is doing. 'waiting': in the drone bay, not active (cannot catch).
- * 'hunting': heading for the robot by the shortest path.
- * Later tickets add patrolling.
+ * What a drone is doing.
  */
 export type DroneMode =
+  /** Hunter in the drone bay, not yet released; not active (cannot catch). */
   | 'waiting'
+  /** Hunter heading for the robot by the shortest path. */
   | 'hunting'
   /** Patroller flying its route of waypoints in a loop. */
   | 'patrolling'

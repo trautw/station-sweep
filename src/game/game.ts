@@ -30,7 +30,7 @@ import {
   type TilePos,
 } from './types';
 
-const POINTS_PER_CELL = 10;
+const POINTS_PER_ENERGY_CELL = 10;
 /** A salvaged drone scores this times its position in the salvage chain. */
 const POINTS_PER_SALVAGE = 250;
 /** Clearing a deck scores this, plus DECK_BONUS_PER_CHARGE per carried EMP charge. */
@@ -282,8 +282,8 @@ class Simulation implements Game {
     const cell = this.energyCells.get(key);
     if (cell === undefined) return;
     this.energyCells.delete(key);
-    this.addScore(POINTS_PER_CELL, events);
-    events.push({ type: 'cellCollected', tile: cell });
+    this.addScore(POINTS_PER_ENERGY_CELL, events);
+    events.push({ type: 'energyCellCollected', tile: cell });
     if (this.energyCells.size === 0) {
       this.phase = 'deckCleared';
       this.deckClearedTicks = 0;

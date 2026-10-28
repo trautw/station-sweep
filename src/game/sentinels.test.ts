@@ -15,7 +15,7 @@ const HALL = [
   '##################',
 ];
 const AREA = { from: { x: 12, y: 1 }, to: { x: 16, y: 2 } };
-const GUARD: SentinelDefinition = { start: { x: 14, y: 1 }, area: AREA };
+const HALL_SENTINEL: SentinelDefinition = { start: { x: 14, y: 1 }, area: AREA };
 
 function startGame(
   grid: string[],
@@ -39,14 +39,14 @@ const inArea = (p: { x: number; y: number }) =>
 
 describe('Sentinels', () => {
   it('start on their start tile', () => {
-    const game = startGame(HALL, [GUARD], levels(3));
+    const game = startGame(HALL, [HALL_SENTINEL], levels(3));
     expect(sentinel(game).tile).toEqual({ x: 14, y: 1 });
     expect(sentinel(game).mode).toBe('guarding');
   });
 
   it('move around inside their guarded area while the robot is far away', () => {
     // The robot never moves from x=1; the area starts at x=12, far beyond 3 tiles.
-    const game = startGame(HALL, [GUARD], levels(3));
+    const game = startGame(HALL, [HALL_SENTINEL], levels(3));
     const visited = new Set<string>();
     for (let i = 0; i < 1200; i++) {
       game.tick(1);
@@ -68,7 +68,7 @@ describe('Sentinels', () => {
   ];
 
   it('leave their area and chase the robot once it is within the trigger distance', () => {
-    const game = startGame(NEAR_HALL, [GUARD], levels(5));
+    const game = startGame(NEAR_HALL, [HALL_SENTINEL], levels(5));
     let leftArea = false;
     for (let i = 0; i < 600 && game.state().lives === 3; i++) {
       game.tick(1);
@@ -79,7 +79,7 @@ describe('Sentinels', () => {
   });
 
   it('stay in their area while the robot is just outside the trigger distance', () => {
-    const game = startGame(NEAR_HALL, [GUARD], levels(4.9));
+    const game = startGame(NEAR_HALL, [HALL_SENTINEL], levels(4.9));
     for (let i = 0; i < 1200; i++) {
       game.tick(1);
       expect(sentinel(game).mode).toBe('guarding');
@@ -89,7 +89,7 @@ describe('Sentinels', () => {
   });
 
   it('return to their area and guard it again once the robot is out of range', () => {
-    const game = startGame(NEAR_HALL, [GUARD], levels(5));
+    const game = startGame(NEAR_HALL, [HALL_SENTINEL], levels(5));
     const tickUntil = (done: () => boolean) => {
       for (let i = 0; i < 1200; i++) {
         game.tick(1);
@@ -128,7 +128,7 @@ describe('Sentinel validation', () => {
   }
 
   it('accepts a guarded area with corridor tiles and a corridor start inside it', () => {
-    expect(errorsFor([GUARD])).toEqual([]);
+    expect(errorsFor([HALL_SENTINEL])).toEqual([]);
   });
 
   it('reports a guarded area that contains no corridor tile', () => {
@@ -142,7 +142,7 @@ describe('Sentinel validation', () => {
   it('reports a Sentinel that starts on a wall tile', () => {
     // The area includes the wall row 0; the start (13, 0) is a wall.
     const area = { from: { x: 12, y: 0 }, to: { x: 16, y: 2 } };
-    expect(errorsFor([GUARD, { start: { x: 13, y: 0 }, area }])).toEqual([
+    expect(errorsFor([HALL_SENTINEL, { start: { x: 13, y: 0 }, area }])).toEqual([
       'test deck: Sentinel 2: start (13, 0) is a wall tile',
     ]);
   });

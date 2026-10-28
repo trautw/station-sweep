@@ -16,7 +16,7 @@ interface Tone {
 type Effect = readonly Tone[];
 
 const EFFECTS = {
-  cellCollected: [{ from: 880, to: 1320, duration: 0.05, wave: 'square', volume: 0.08 }],
+  energyCellCollected: [{ from: 880, to: 1320, duration: 0.05, wave: 'square', volume: 0.08 }],
   empPickedUp: [
     { from: 520, to: 780, duration: 0.08, wave: 'triangle' },
     { from: 780, to: 1170, duration: 0.1, wave: 'triangle', at: 0.08 },

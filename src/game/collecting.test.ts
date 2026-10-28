@@ -45,7 +45,7 @@ describe('collecting energy cells', () => {
       { x: 4, y: 1 },
       { x: 5, y: 1 },
     ]);
-    expect(game.events()).toEqual([{ type: 'cellCollected', tile: { x: 2, y: 1 } }]);
+    expect(game.events()).toEqual([{ type: 'energyCellCollected', tile: { x: 2, y: 1 } }]);
   });
 
   it('reports no events in a tick where nothing is collected', () => {
@@ -73,8 +73,8 @@ describe('collecting energy cells', () => {
     game.tick(3 * TICKS_PER_TILE);
     expect(game.state().score).toBe(20);
     expect(game.events()).toEqual([
-      { type: 'cellCollected', tile: { x: 2, y: 1 } },
-      { type: 'cellCollected', tile: { x: 4, y: 1 } },
+      { type: 'energyCellCollected', tile: { x: 2, y: 1 } },
+      { type: 'energyCellCollected', tile: { x: 4, y: 1 } },
     ]);
     expect(game.state().phase).toBe('playing');
   });
