@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Energy cells are drawn and disappear when collected
-- [ ] The score in the top strip goes up by 10 for each energy cell
-- [ ] Tests: collecting a cell adds 10 points and emits an event; collecting the last cell moves the game to "deck cleared"
+- [x] Energy cells are drawn and disappear when collected
+- [x] The score in the top strip goes up by 10 for each energy cell
+- [x] Tests: collecting a cell adds 10 points and emits an event; collecting the last cell moves the game to "deck cleared"
