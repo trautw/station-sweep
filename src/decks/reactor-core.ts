@@ -22,7 +22,7 @@ export const reactorCore: DeckDefinition = {
         ],
       },
       // Up and down the upper gallery.
-      { route: [{ x: 1, y: 3 }, { x: 9, y: 3 }] },
+      { route: [{ x: 1, y: 3 }, { x: 7, y: 3 }] },
     ],
     // Guards the left end of the cross shaft.
     sentinels: [{ start: { x: 1, y: 11 }, area: { from: { x: 1, y: 8 }, to: { x: 4, y: 14 } } }],
